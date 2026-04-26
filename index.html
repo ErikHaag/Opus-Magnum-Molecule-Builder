@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='utf-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <title>OMMMB</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ErikHaag/Opus-Magnum-Periodic-Table/atomColor.css">
+    <link rel="stylesheet" href="main.css">
+</head>
+<body>
+    <h2>Opus Magnum Modded Molecule Builder</h2>
+    <svg id="atomSymbols" style="display: none;"></svg>
+    <svg id="bondSymbols" style="display: none;">
+        <g id="normal_bond">
+            <line x1="0" y1="0" x2="0" y2="10" stroke="var(--standard-bond)" stroke-width="3" />
+            <line x1="0" y1="5" x2="24" y2="5" stroke="var(--standard-bond)" stroke-width="5" />
+            <line x1="24" y1="0" x2="24" y2="10" stroke="var(--standard-bond)" stroke-width="3" />
+        </g>
+        <g id="triplex_o_bond">
+            <path d="M 0 0 C 5 0 19 10 24 10" fill="none" stroke="var(--triplex-bond-orange)" stroke-width="3" />
+        </g>
+        <g id="triplex_g_bond">
+            <line x1="0" y1="5" x2="24" y2="5" stroke="var(--triplex-bond-grey)" stroke-width="3" />
+        </g>
+        <g id="triplex_r_bond">
+            <path d="M 0 10 C 5 10 19 0 24 0" fill="none" stroke="var(--triplex-bond-red)" stroke-width="3" />
+        </g>
+        <g id="triplex_or_bond">
+            <use href="#triplex_o_bond" />
+            <use href="#triplex_r_bond" />
+        </g>
+        <g id="triplex_og_bond">
+            <use href="#triplex_o_bond" />
+            <use href="#triplex_g_bond" />
+        </g>
+        <g id="triplex_gr_bond">
+            <use href="#triplex_g_bond" />
+            <use href="#triplex_r_bond" />
+        </g>
+        <g id="triplex_ogr_bond">
+            <use href="#triplex_o_bond" />
+            <use href="#triplex_g_bond" />
+            <use href="#triplex_r_bond" />
+        </g>
+    </svg>
+    <svg style="width: 500px; height: 500px">
+        <g id="collage" style="display: none;"></g>
+        <g id="bondCollage" style="display: none;"></g>
+        <g transform="translate(250, 250)">
+            <g id="atoms"></g>
+            <g id="bonds"></g>
+        </g>
+    </svg>
+    <div class="row">
+        <fieldset>
+            <legend>Atoms</legend>
+            <textarea id="atomInput" spellcheck="false" placeholder="salt -1 1&#x000A;fire 0 0 &#x000A;fire 1 -1" rows="10" ></textarea>
+        </fieldset>
+        <fieldset>
+            <legend>Bonds</legend>
+            <textarea id="bondInput" spellcheck="false" placeholder="normal -1 1 0 0&#x000A;triplex ogr 0 0 1 -1" rows="10"></textarea>
+        </fieldset>
+    </div>
+</body>
+<script src="https://cdn.jsdelivr.net/gh/ErikHaag/Opus-Magnum-Periodic-Table/catalogue.js"></script>
+<script src="main.js" ></script>
+</html>

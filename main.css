@@ -1,0 +1,7 @@
+.glide {
+    transition: transform 1s;
+}
+
+.row {
+    display: flex;
+}
