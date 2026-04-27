@@ -1,21 +1,3 @@
-class Elements {
-    static init() {
-        this.collage = document.getElementById("collage");
-        this.bondCollage = document.getElementById("bondCollage");
-        this.atomContainers = document.getElementById("atoms");
-        this.bondContainers = document.getElementById("bonds");
-        this.atomInput = document.getElementById("atomInput");
-        this.bondInput = document.getElementById("bondInput");
-    }
-
-    static collage;
-    static bondCollage;
-    static atomContainers;
-    static bondContainers;
-    static atomInput;
-    static bondInput;
-}
-
 class Atom {
     static atomTypes = [];
 
@@ -41,8 +23,9 @@ class Atom {
         }
         this.q = q;
         this.r = r;
-        let x = 82 * Number(this.q) + 41 * Number(this.r) - 30;
-        let y = -Math.sqrt(3) * 41 * Number(this.r) - 30;
+        let [x, y] = HexIndex.toXY(this.q, this.r);
+        x -= 30;
+        y -= 30;
         this.elem.setAttribute("transform", `translate(${x}, ${y})`);
     }
 
@@ -89,10 +72,8 @@ class Bond {
         this.q2 = q2;
         this.r2 = r2;
 
-        let x1 = 82 * Number(this.q1) + 41 * Number(this.r1);
-        let y1 = -Math.sqrt(3) * 41 * Number(this.r1);
-        let x2 = 82 * Number(this.q2) + 41 * Number(this.r2);
-        let y2 = -Math.sqrt(3) * 41 * Number(this.r2);
+        let [x1, y1] = HexIndex.toXY(this.q1, this.r1);
+        let [x2, y2] = HexIndex.toXY(this.q2, this.r2);
 
         let angle = 180 * (Math.atan2(y2 - y1, x2 - x1) / Math.PI);
 
@@ -103,6 +84,41 @@ class Bond {
         this.elem.remove();
     }
 
+}
+
+class Elements {
+    static init() {
+        this.atomContainers = document.getElementById("atoms");
+        this.atomInput = document.getElementById("atomInput");
+        this.bondCollage = document.getElementById("bondCollage");
+        this.bondContainers = document.getElementById("bonds");
+        this.bondInput = document.getElementById("bondInput");
+        this.camera = document.getElementById("camera");
+        this.collage = document.getElementById("collage");
+    }
+
+    static atomContainers;
+    static atomInput;
+    static bondCollage;
+    static bondContainers;
+    static bondInput;
+    static camera;
+    static collage;
+}
+
+class Globals {
+    static desiredAtomList = [];
+    static desiredBondList = [];
+    static modified = false;
+
+    static atomList = [];
+    static bondList = [];
+}
+
+class HexIndex {
+    static toXY(q, r) {
+        return [82 * Number(q) + 41 * Number(r), -Math.sqrt(3) * 41 * Number(r)]
+    }
 }
 
 finishFunction = initialize;
@@ -145,15 +161,6 @@ function initialize() {
     window.setInterval(displayUpdate, 1000);
 }
 
-class Globals {
-    static desiredAtomList = [];
-    static desiredBondList = [];
-    static modified = false;
-
-    static atomList = [];
-    static bondList = [];
-}
-
 function atomInputUpdate() {
     let i = Elements.atomInput.value
         .split("\n")
@@ -185,10 +192,10 @@ function bondInputUpdate() {
                 return s;
             }
         });
-    
+
     Elements.bondInput.value = i.map((v) => typeof (v) == "string" ? v : v.join(" ")).join("\n").replaceAll("_", " ");
 
-    Globals.desiredBondList = i.filter((i) => typeof(i) != "string");
+    Globals.desiredBondList = i.filter((i) => typeof (i) != "string");
     Globals.modified = true;
 }
 
@@ -197,7 +204,7 @@ function displayUpdate() {
         return;
     }
     Globals.modified = false;
-    
+
     // atoms
     while (Globals.atomList.length > Globals.desiredAtomList.length) {
         Globals.atomList.pop().remove();
@@ -226,4 +233,31 @@ function displayUpdate() {
         Globals.bondList[i].setPosition(Globals.desiredBondList[i][1], Globals.desiredBondList[i][2], Globals.desiredBondList[i][3], Globals.desiredBondList[i][4]);
     }
 
+    let xMin = Number.POSITIVE_INFINITY;
+    let yMin = Number.POSITIVE_INFINITY;
+    let xMax = Number.NEGATIVE_INFINITY;
+    let yMax = Number.NEGATIVE_INFINITY;
+
+    if (Globals.atomList.length == 0) {
+        xMin = -250;
+        yMin = -250;
+        xMax = 250;
+        yMax = 250;
+    } else {
+        for (let a of Globals.atomList) {
+            let [x, y] = HexIndex.toXY(a.q, a.r);
+            xMin = Math.min(xMin, x - 45);
+            yMin = Math.min(yMin, y - 45);
+            xMax = Math.max(xMax, x + 45);
+            yMax = Math.max(yMax, y + 45);
+        }
+    }
+
+    let centerX = (xMin + xMax) / 2;
+    let centerY = (yMin + yMax) / 2;
+    let spanX = xMax - xMin;
+    let spanY = yMax - yMin;
+    let scale = 500 / Math.max(500, spanX, spanY);
+
+    Elements.camera.setAttribute("transform", `translate(250, 250) scale(${scale}) translate(${-centerX}, ${-centerY})`);
 }
