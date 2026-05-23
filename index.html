@@ -4,7 +4,8 @@
     <meta charset='utf-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1'>
     <title>OMMMB</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ErikHaag/Opus-Magnum-Periodic-Table/atomColor.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ErikHaag/Opus-Magnum-Assets/symbols/base.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ErikHaag/Opus-Magnum-Assets/bases/base.css">
     <link rel="stylesheet" href="main.css">
 </head>
 <body>
@@ -57,13 +58,20 @@
         <fieldset>
             <legend>Atoms</legend>
             <textarea id="atomInput" spellcheck="false" placeholder="salt -1 1&#x000A;fire 0 0 &#x000A;fire 1 -1" rows="10" ></textarea>
+            <p class="introvert" id="atomError"></p>
         </fieldset>
         <fieldset>
             <legend>Bonds</legend>
             <textarea id="bondInput" spellcheck="false" placeholder="normal -1 1 0 0&#x000A;triplex ogr 0 0 1 -1" rows="10"></textarea>
         </fieldset>
+        <fieldset>
+            <legend>Buttons</legend>
+            <button id="cleanup" title="Clean up and sort atoms and bonds">Cleanup</button>
+            <button id="turnCCW" title="Turn molecule counter clockwise">&#x21B6;</button>
+            <button id="turnCW" title="Turn molecule clockwise">&#x21B7;</button>
+        </fieldset>
     </div>
 </body>
-<script src="https://cdn.jsdelivr.net/gh/ErikHaag/Opus-Magnum-Periodic-Table/catalogue.js"></script>
-<script src="main.js" ></script>
+
+<script src="main.js"></script>
 </html>

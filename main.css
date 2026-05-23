@@ -1,5 +1,16 @@
+:root {
+    --standard-bond: #666;
+    --triplex-bond-red: #f00;
+    --triplex-bond-orange: #f80;
+    --triplex-bond-grey: #888;
+}
+
 .glide {
     transition: transform 1s;
+}
+
+.introvert:empty {
+    display: none;
 }
 
 .row {
