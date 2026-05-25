@@ -1,111 +1,47 @@
-class Atom {
-    static atomTypes = new Map();
-
-    constructor(atomType, q, r) {
-        this.elem = document.createElementNS("http://www.w3.org/2000/svg", "use");
-        Elements.atomContainers.appendChild(this.elem);
-        this.setAtomType(atomType);
-        this.setPosition(q, r);
-        this.elem.classList.add("glide");
-    }
-
-    setAtomType(atomType) {
-        if (this.atomType == atomType) {
-            return;
-        }
-        this.atomType = atomType;
-        this.elem.setAttribute("href", `#OMA_A_${this.atomType}`);
-    }
-
-    setPosition(q, r) {
-        if (this.q == q && this.r == r) {
-            return;
-        }
-        this.q = q;
-        this.r = r;
-        let [x, y] = HexIndex.toXY(this.q, this.r);
-        x -= 30;
-        y -= 30;
-        this.elem.setAttribute("transform", `translate(${x}, ${y})`);
-    }
-
-    remove() {
-        this.elem.remove();
-    }
-}
-
-class Bond {
-    static bondTypes = [];
-
-    constructor(bondType, q1, r1, q2, r2) {
-        this.elem = document.createElementNS("http://www.w3.org/2000/svg", "use");
-        Elements.bondContainers.appendChild(this.elem);
-        this.setBondType(bondType);
-        this.setPosition(q1, r1, q2, r2);
-        this.elem.classList.add("glide");
-    }
-
-    setBondType(bondType) {
-        if (this.bondType == bondType) {
-            return;
-        }
-        this.bondType = bondType;
-        this.elem.setAttribute("href", `#${this.bondType}_bond`);
-    }
-
-    setPosition(q1, r1, q2, r2) {
-        if (q1 > q2 || (q1 == q2 && r1 > r2)) {
-            // swap (q1, r1) with (q2, r2)
-            let temp = q1;
-            q1 = q2;
-            q2 = temp;
-            temp = r1;
-            r1 = r2;
-            r2 = temp;
-        }
-        if (this.q1 == q1 && this.r1 == r1 && this.q2 == q2 && this.r2 == r2) {
-            return;
-        }
-
-        this.q1 = q1;
-        this.r1 = r1;
-        this.q2 = q2;
-        this.r2 = r2;
-
-        let [x1, y1] = HexIndex.toXY(this.q1, this.r1);
-        let [x2, y2] = HexIndex.toXY(this.q2, this.r2);
-
-        let angle = 180 * (Math.atan2(y2 - y1, x2 - x1) / Math.PI);
-
-        this.elem.setAttribute("transform", `translate(${(x1 + x2) / 2}, ${(y1 + y2) / 2}) rotate(${angle}) translate(-12, -5)`);
-    }
-
-    remove() {
-        this.elem.remove();
-    }
-
-}
-
 class Elements {
     static init() {
-        this.atomContainers = document.getElementById("atoms");
+        this.bondCollage = document.getElementById("bondCollage");
+        this.atomCollage = document.getElementById("atomCollage");
+        this.camera = document.getElementById("camera");
+        this.atomContainer = document.getElementById("atoms");
+        this.bondContainer = document.getElementById("bonds");
+
         this.atomInput = document.getElementById("atomInput");
         this.atomError = document.getElementById("atomError");
-        this.bondCollage = document.getElementById("bondCollage");
-        this.bondContainers = document.getElementById("bonds");
         this.bondInput = document.getElementById("bondInput");
-        this.camera = document.getElementById("camera");
-        this.collage = document.getElementById("collage");
+
+        this.cleanupButton = document.getElementById("cleanup");
+        this.rotateCCWButton = document.getElementById("turnCCW");
+        this.rotateCWButton = document.getElementById("turnCW");
+
+        this.saveButton = document.getElementById("save");
+        this.saveLink = document.getElementById("downloadText");
+        this.exportButton = document.getElementById("export");
+        this.exportLink = document.getElementById("downloadImage");
+        this.loadButton = document.getElementById("load");
+        this.fileInput = document.getElementById("loadInput");
     }
 
-    static atomContainers;
+    static atomCollage;
+    static bondCollage;
+    static camera;
+    static atomContainer;
+    static bondContainer;
+
     static atomInput;
     static atomError;
-    static bondCollage;
-    static bondContainers;
     static bondInput;
-    static camera;
-    static collage;
+
+    static cleanupButton;
+    static rotateCCWButton;
+    static rotateCWButton;
+
+    static saveButton;
+    static saveLink;
+    static exportButton;
+    static exportLink;
+    static loadButton;
+    static fileInput;
 }
 
 class Globals {
@@ -115,12 +51,6 @@ class Globals {
 
     static atomList = [];
     static bondList = [];
-}
-
-class HexIndex {
-    static toXY(q, r) {
-        return [82 * Number(q) + 41 * Number(r), -Math.sqrt(3) * 41 * Number(r)]
-    }
 }
 
 document.addEventListener("DOMContentLoaded", initialize);
@@ -136,12 +66,13 @@ function initialize() {
         import("https://cdn.jsdelivr.net/gh/ErikHaag/Opus-Magnum-Assets/symbols/atomSymbolsExpand.js"),
         import("https://cdn.jsdelivr.net/gh/ErikHaag/Opus-Magnum-Assets/bases/atomBasesExpand.js"),
         import("https://cdn.jsdelivr.net/gh/ErikHaag/Opus-Magnum-Assets/combining/atomMerge.js")
-    ]).then((v) => Promise.all([
-        v[0].expandAtomSymbols(symbols, { mode: 2 }),
-        v[1].expandAtomBases(bases, { mode: 0 })
-    ]).then(() => {
-        v[2].atomMerge(Elements.collage, symbols, bases, { mode: 1 });
-        for (let e of Elements.collage.children) {
+    ]).then(async (v) => {
+        await Promise.all([
+            v[0].expandAtomSymbols(symbols, { mode: 3 }),
+            v[1].expandAtomBases(bases, { mode: 1 })
+        ]);
+        v[2].atomMerge(Elements.atomCollage, symbols, bases, { mode: 1 });
+        for (let e of Elements.atomCollage.children) {
             let namespaceStart = e.id.indexOf("__");
             let namespace = e.id.substring(namespaceStart + 2);
             let atomName = e.id.substring(6, namespaceStart);
@@ -152,43 +83,50 @@ function initialize() {
                 l.push(namespace);
             }
         }
-    })
+        {
+            let bS = document.getElementById("bondSymbols");
+            for (let elem of Array.from(bS.children)) {
+                Elements.bondCollage.appendChild(elem);
+            }
+            bS.remove();
+        }
+
+        {
+            for (let elem of Elements.bondCollage.children) {
+                Bond.bondTypes.push(elem.id.substring(0, elem.id.length - 5));
+                
+                for (let component of Array.from(elem.children)) {
+                    if (component.tagName == "use") {
+                        let useEl = document.getElementById(component.getAttribute("href").substring(1));
+                        for (let c of useEl.children) {
+                            elem.appendChild(c.cloneNode());
+                        }
+                        component.remove();
+                    } else if (component.tagName == "line" || component.tagName == "path") {
+                        let styles = window.getComputedStyle(component);
+                        component.setAttribute("stroke", v[0].colorToHex(styles.stroke));
+                    }
+                }
+            }
+        }
+    }
     ).then(() => {
         symbols.remove();
         bases.remove();
         atomSymbols.remove();
-        console.log(Elements.collage.children.length + " atoms loaded.");
+        console.log(Elements.atomCollage.children.length + " atoms loaded.");
     })
-
-    {
-        let bS = document.getElementById("bondSymbols");
-        for (let elem of Array.from(bS.children)) {
-            Elements.bondCollage.appendChild(elem);
-        }
-        bS.remove();
-    }
-
-    for (let elem of Elements.bondCollage.children) {
-        Bond.bondTypes.push(elem.id.substring(0, elem.id.length - 5));
-
-        for (let component of Array.from(elem.children)) {
-            if (component.tagName == "use") {
-                let useEl = document.getElementById(component.getAttribute("href").substring(1));
-                for (let c of useEl.children) {
-                    elem.appendChild(c.cloneNode());
-                }
-                component.remove();
-            }
-        }
-    }
 
 
     Elements.atomInput.addEventListener("focusout", atomInputUpdate);
     Elements.bondInput.addEventListener("focusout", bondInputUpdate);
-    document.getElementById("cleanup").addEventListener("click", () => cleanup());
-    document.getElementById("turnCCW").addEventListener("click", () => turn(false));
-    document.getElementById("turnCW").addEventListener("click", () => turn(true));
+    Elements.cleanupButton.addEventListener("click", () => cleanup());
+    Elements.rotateCCWButton.addEventListener("click", () => turn(false));
+    Elements.rotateCWButton.addEventListener("click", () => turn(true));
 
+    Elements.loadButton.addEventListener("click", () => loadFile());
+    Elements.saveButton.addEventListener("click", () => saveFile());
+    Elements.exportButton.addEventListener("click", () => exportImage())
     window.setInterval(displayUpdate, 1000);
 }
 
@@ -206,7 +144,7 @@ function atomInputUpdate() {
                     [namespace, namespaceList] = inferNamespace(r.name);
                     if (namespace == null) {
                         if (namespaceList != null) {
-                            error ||= "The atom \"" + r.name + "\" is ambiguous, please prepend one of the following namespaces, followed by a colon (:)\n" + namespaceList.join(",\n");
+                            error ||= "The atom \"" + r.name + "\" is ambiguous, please prepend one of the following namespaces, followed by a colon (:)\n" + namespaceList.join("\n");
                         }
                         return s.replaceAll("_", " ");
                     }
@@ -284,7 +222,7 @@ function displayUpdate() {
     while (Globals.bondList.length > Globals.desiredBondList.length) {
         Globals.bondList.pop().remove();
     }
-
+    ``
     for (let i = 0; i < Globals.desiredBondList.length; i++) {
         if (Globals.bondList[i] == undefined) {
             Globals.bondList.push(new Bond(...Globals.desiredBondList[i]));
@@ -294,24 +232,13 @@ function displayUpdate() {
         Globals.bondList[i].setPosition(Globals.desiredBondList[i][1], Globals.desiredBondList[i][2], Globals.desiredBondList[i][3], Globals.desiredBondList[i][4]);
     }
 
-    let xMin = Number.POSITIVE_INFINITY;
-    let yMin = Number.POSITIVE_INFINITY;
-    let xMax = Number.NEGATIVE_INFINITY;
-    let yMax = Number.NEGATIVE_INFINITY;
+    let { xMin, yMin, xMax, yMax } = getAtomBoundingBox();
 
-    if (Globals.atomList.length == 0) {
+    if (xMin >= -250 && yMin >= -250 && xMax <= 250 && yMax <= 250) {
         xMin = -250;
         yMin = -250;
         xMax = 250;
         yMax = 250;
-    } else {
-        for (let a of Globals.atomList) {
-            let [x, y] = HexIndex.toXY(a.q, a.r);
-            xMin = Math.min(xMin, x - 45);
-            yMin = Math.min(yMin, y - 45);
-            xMax = Math.max(xMax, x + 45);
-            yMax = Math.max(yMax, y + 45);
-        }
     }
 
     let centerX = (xMin + xMax) / 2;
@@ -321,6 +248,29 @@ function displayUpdate() {
     let scale = 500 / Math.max(500, spanX, spanY);
 
     Elements.camera.setAttribute("transform", `translate(250, 250) scale(${scale}) translate(${-centerX}, ${-centerY})`);
+}
+
+function getAtomBoundingBox() {
+    let xMin = Number.POSITIVE_INFINITY;
+    let yMin = Number.POSITIVE_INFINITY;
+    let xMax = Number.NEGATIVE_INFINITY;
+    let yMax = Number.NEGATIVE_INFINITY;
+
+    if (Globals.atomList.length == 0) {
+        xMin = 0;
+        yMin = 0;
+        xMax = 0;
+        yMax = 0;
+    } else {
+        for (let a of Globals.atomList) {
+            let [x, y] = HexIndex.toXY(a.q, a.r);
+            xMin = Math.min(xMin, x - 45);
+            yMin = Math.min(yMin, y - 45);
+            xMax = Math.max(xMax, x + 45);
+            yMax = Math.max(yMax, y + 45);
+        }
+    }
+    return { xMin, yMin, xMax, yMax };
 }
 
 function cleanup() {
@@ -350,7 +300,7 @@ function turn(clockwise = false) {
         let r1 = clockwise ? -b.q1 : b.q1 + b.r1;
         let q2 = clockwise ? b.q2 + b.r2 : -b.r2;
         let r2 = clockwise ? -b.q2 : b.q2 + b.r2;
-        if (q1 > q2 || (q1 == q2 && r1 > r2)) {
+        if (HexIndex.compare(q1, r1, q2, r2) > 0) {
             b.q1 = q2;
             b.r1 = r2;
             b.q2 = q1;
@@ -429,20 +379,8 @@ function reorderEntries(atoms, bonds) {
     }
     if (bonds != null) {
         bonds.sort((a, b) => {
-            let diff = a.q1 - b.q1;
-            if (diff != 0n) {
-                return diff > 0n ? 1 : -1;
-            }
-            diff = a.r1 - b.r1;
-            if (diff != 0n) {
-                return diff > 0n ? 1 : -1;
-            }
-            diff = a.q2 - b.q2;
-            if (diff != 0n) {
-                return diff > 0n ? 1 : -1;
-            }
-            diff = a.r2 - b.r2;
-            return diff > 0n ? 1 : -1;
+            let x = HexIndex.compare(a.q1, a.r1, b.q1, b.r1);
+            return (x != 0) ? x : HexIndex.compare(a.q2, a.r2, b.q2, b.r2);
         });
     }
 }

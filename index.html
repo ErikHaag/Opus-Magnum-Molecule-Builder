@@ -45,7 +45,7 @@
         </g>
     </svg>
     <svg style="width: 500px; height: 500px">
-        <g id="collage" style="display: none;"></g>
+        <g id="atomCollage" style="display: none;"></g>
         <g id="bondCollage" style="display: none;"></g>
         <g id="camera" class="glide" transform="translate(250, 250) scale(1) translate(0, 0)">
             <path d="M -10 -20 v 40 m 0 -20 h 20 m 0 -20 v 40 M -10 -10 h 12 M -10 10 h 12" fill="none" stroke="#0a1" stroke-width="3" />
@@ -66,12 +66,25 @@
         </fieldset>
         <fieldset>
             <legend>Buttons</legend>
-            <button id="cleanup" title="Clean up and sort atoms and bonds">Cleanup</button>
+            <button id="cleanup" title="Clean up and sort atoms and bonds">Cleanup</button><br />
             <button id="turnCCW" title="Turn molecule counter clockwise">&#x21B6;</button>
             <button id="turnCW" title="Turn molecule clockwise">&#x21B7;</button>
+            <hr />
+            <button id="save" title="Save this molecule as a text file">Save as text</button>
+            <a id="downloadText" download="molecule.txt" class="display: none;"></a>
+            <button id="export" title="Save this molecule as an SVG">Export as SVG</button>
+            <a id="downloadImage" download="molecule.svg" class="display: none;"></a>
+            <hr />
+            <button id="load" title="Load a molecule from a text file">Load</button>
+            <input id="loadInput" type="file" accept=".txt" />
+            <br />
         </fieldset>
     </div>
 </body>
 
+<script src="hexIndex.js"></script>
+<script src="atom.js"></script>
+<script src="bond.js"></script>
 <script src="main.js"></script>
+<script src="files.js"></script>
 </html>
