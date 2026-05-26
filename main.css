@@ -16,3 +16,20 @@
 .row {
     display: flex;
 }
+
+.atomGrid {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-rows: auto auto;
+    grid-auto-columns: minmax(0, 1fr);
+    justify-items: center;
+    width: max-content;
+
+    & > * {
+        padding: 0px 2px;
+    }
+
+    & > p {
+        text-align: center;
+    }
+}

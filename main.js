@@ -20,6 +20,8 @@ class Elements {
         this.exportLink = document.getElementById("downloadImage");
         this.loadButton = document.getElementById("load");
         this.fileInput = document.getElementById("loadInput");
+
+        this.atomList = document.getElementById("atomList");
     }
 
     static atomCollage;
@@ -42,6 +44,8 @@ class Elements {
     static exportLink;
     static loadButton;
     static fileInput;
+
+    static atomList
 }
 
 class Globals {
@@ -83,6 +87,8 @@ function initialize() {
                 l.push(namespace);
             }
         }
+        generateAtomList();
+
         {
             let bS = document.getElementById("bondSymbols");
             for (let elem of Array.from(bS.children)) {
