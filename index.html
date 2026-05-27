@@ -63,6 +63,11 @@
             <legend>Atoms</legend>
             <textarea id="atomInput" spellcheck="false" placeholder="salt -1 1&#x000A;fire 0 0 &#x000A;fire 1 -1" rows="10"></textarea>
             <p class="introvert" id="atomError"></p>
+            <p>
+                To automatically bond a line of atoms, type the line "( &lt;q&gt; &lt;r&gt;" then subsequent atoms,<br />
+                finally type ")" alone on a new line to end the chain.<br />
+                Using square brackets [] instead connects enclosed atom to the start, useful for wheels.
+            </p>
         </fieldset>
         <fieldset>
             <legend>Bonds</legend>
@@ -73,6 +78,14 @@
             <button id="cleanup" title="Clean up and sort atoms and bonds">Cleanup</button><br />
             <button id="turnCCW" title="Turn molecule counter clockwise">&#x21B6;</button>
             <button id="turnCW" title="Turn molecule clockwise">&#x21B7;</button>
+            <div id="hexagon">
+                <button id="moveNW" title="Move molecule up left">&#x2196;</button>
+                <button id="moveNE" title="Move molecule up right">&#x2197;</button>
+                <button id="moveW" title="Move molecule left">&#x2190;</button>
+                <button id="moveE" title="Move molecule right">&#x2192;</button>
+                <button id="moveSW" title="Move molecule down left">&#x2199;</button>
+                <button id="moveSE" title="Move molecule down right">&#x2198;</button>
+            </div>
             <hr />
             <button id="save" title="Save this molecule as a text file">Save as text</button>
             <a id="downloadText" download="molecule.txt" class="display: none;"></a>

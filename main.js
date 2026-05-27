@@ -13,6 +13,7 @@ class Elements {
         this.cleanupButton = document.getElementById("cleanup");
         this.rotateCCWButton = document.getElementById("turnCCW");
         this.rotateCWButton = document.getElementById("turnCW");
+        this.translateButtons = ["NE", "E", "SE", "SW", "W", "NW"].map((v) => document.getElementById(`move${v}`));
 
         this.saveButton = document.getElementById("save");
         this.saveLink = document.getElementById("downloadText");
@@ -37,6 +38,8 @@ class Elements {
     static cleanupButton;
     static rotateCCWButton;
     static rotateCWButton;
+    static translateButtons;
+
 
     static saveButton;
     static saveLink;
@@ -100,7 +103,7 @@ function initialize() {
         {
             for (let elem of Elements.bondCollage.children) {
                 Bond.bondTypes.push(elem.id.substring(0, elem.id.length - 5));
-                
+
                 for (let component of Array.from(elem.children)) {
                     if (component.tagName == "use") {
                         let useEl = document.getElementById(component.getAttribute("href").substring(1));
@@ -124,51 +127,119 @@ function initialize() {
     })
 
 
-    Elements.atomInput.addEventListener("focusout", atomInputUpdate);
-    Elements.bondInput.addEventListener("focusout", bondInputUpdate);
+    Elements.atomInput.addEventListener("focusout", () => atomInputUpdate(true));
+    Elements.bondInput.addEventListener("focusout", () => bondInputUpdate(true));
+    
     Elements.cleanupButton.addEventListener("click", () => cleanup());
     Elements.rotateCCWButton.addEventListener("click", () => turn(false));
     Elements.rotateCWButton.addEventListener("click", () => turn(true));
+    Elements.translateButtons[0].addEventListener("click", () => translate(0n, 1n));
+    Elements.translateButtons[1].addEventListener("click", () => translate(1n, 0n));
+    Elements.translateButtons[2].addEventListener("click", () => translate(1n, -1n));
+    Elements.translateButtons[3].addEventListener("click", () => translate(0n, -1n));
+    Elements.translateButtons[4].addEventListener("click", () => translate(-1n, 0n));
+    Elements.translateButtons[5].addEventListener("click", () => translate(-1n, 1n));
+
 
     Elements.loadButton.addEventListener("click", () => loadFile());
     Elements.saveButton.addEventListener("click", () => saveFile());
-    Elements.exportButton.addEventListener("click", () => exportImage())
+    Elements.exportButton.addEventListener("click", () => exportImage());
     window.setInterval(displayUpdate, 1000);
 }
 
-function atomInputUpdate() {
+function atomInputUpdate(userUpdate = false) {
     let error = "";
 
-    let i = Elements.atomInput.value
+    let autobonds = [];
+
+    let inp = Elements.atomInput.value.toLowerCase()
         .split("\n")
         .map((s) => s.replaceAll(/[_ ]+/g, "_"))
-        .map((s) => {
-            try {
-                let r = /^_?(?:(?<namespace>[\s\S]*):)?(?<name>[\s\S]*)_(?<q>-?\d+)_(?<r>-?\d+)_?$/g.exec(s).groups;
-                let namespace = r.namespace?.toLowerCase();
-                if (namespace == undefined) {
-                    [namespace, namespaceList] = inferNamespace(r.name);
-                    if (namespace == null) {
-                        if (namespaceList != null) {
-                            error ||= "The atom \"" + r.name + "\" is ambiguous, please prepend one of the following namespaces, followed by a colon (:)\n" + namespaceList.join("\n");
-                        }
-                        return s.replaceAll("_", " ");
-                    }
-                }
-                return [namespace, r.name.toLowerCase(), BigInt(r.q), BigInt(r.r)];
-            } catch {
+        .map((s, i) => {
+            let r = /^_?\(_(?<q>-?\d+)_(?<r>-?\d+)_?$/g.exec(s);
+            if (r) {
+                let g = r.groups;
+                autobonds.push([i, -1, "line", BigInt(g.q), BigInt(g.r)]);
                 return s.replaceAll("_", " ");
             }
+            if (/^_?\)_?$/g.test(s)) {
+                let j = autobonds.findLastIndex((v) => v[1] == -1 && v[2] == "line");
+                if (j != -1) {
+                    autobonds[j][1] = i;
+                    return s;
+                }
+            }
+
+            r = /^_?\[_(?<q>-?\d+)_(?<r>-?\d+)_?$/g.exec(s);
+            if (r) {
+                let g = r.groups;
+                autobonds.push([i, -1, "spoke", BigInt(g.q), BigInt(g.r)]);
+                return s.replaceAll("_", " ");
+            }
+            if (/^_?\]_?$/g.test(s)) {
+                let j = autobonds.findLastIndex((v) => v[1] == -1 && v[2] == "spoke");
+                if (j != -1) {
+                    autobonds[j][1] = i;
+                    return s;
+                }
+            }
+
+            r = /^_?(?:(?<namespace>[\s\S]*):)?(?<name>[\s\S]*)_(?<q>-?\d+)_(?<r>-?\d+)_?$/g.exec(s)
+            if (!r) {
+                return s.replaceAll("_", " ");
+            }
+            let g = r.groups;
+            let namespace = g.namespace?.toLowerCase();
+            if (namespace == undefined) {
+                [namespace, namespaceList] = inferNamespace(g.name);
+                if (namespace == null) {
+                    if (namespaceList != null) {
+                        error ||= "The atom \"" + g.name + "\" is ambiguous, please prepend one of the following namespaces, followed by a colon (:)\n" + namespaceList.join("\n");
+                    }
+                    return s.replaceAll("_", " ");
+                }
+            }
+            return [namespace, g.name.toLowerCase(), BigInt(g.q), BigInt(g.r)];
         });
     Elements.atomError.innerText = error;
-    Elements.atomInput.value = i.map((v) => typeof (v) == "string"
+    if (userUpdate && autobonds.length) {
+        let newBonds = [];
+        let linesToRemove = [];
+        for (let ab of autobonds) {
+            if (ab[1] == -1) {
+                continue;
+            }
+            linesToRemove.push(ab[0], ab[1]);
+            let lastQ = ab[3];
+            let lastR = ab[4];
+            for (let i = ab[0] + 1; i < ab[1]; i++) {
+                if (typeof (inp[i]) != "string") {
+                    newBonds.push(`normal ${lastQ} ${lastR} ${inp[i][2]} ${inp[i][3]}`);
+                    if (ab[2] == "line") {
+                        lastQ = inp[i][2];
+                        lastR = inp[i][3];
+                    }
+                }
+            }
+        }
+        linesToRemove.sort((a, b) => b - a);
+        for (let i of linesToRemove) {
+            inp.splice(i, 1);
+        }
+        if (newBonds.length) {
+            Elements.bondInput.value = (newBonds.join("\n") + "\n" + Elements.bondInput.value).trim();
+            bondInputUpdate();
+        }
+    }
+
+    Elements.atomInput.value = inp.map((v) => typeof (v) == "string"
         ? v
         : (inferNamespace(v[1])[0] == null
             ? v[0] + ":" : ""
         ) + v[1] + " " + v[2] + " " + v[3])
         .join("\n");
 
-    Globals.desiredAtomList = i.filter((i) => typeof (i) != "string");
+    Globals.desiredAtomList = inp.filter((v) => typeof (v) != "string");
     Globals.modified = true;
 }
 
@@ -186,7 +257,7 @@ function inferNamespace(atomName) {
 }
 
 function bondInputUpdate() {
-    let i = Elements.bondInput.value
+    let i = Elements.bondInput.value.toLowerCase()
         .split("\n")
         .map((s) => s.replaceAll("_", " ").replaceAll(/ +/g, " "))
         .map((s) => {
@@ -228,7 +299,7 @@ function displayUpdate() {
     while (Globals.bondList.length > Globals.desiredBondList.length) {
         Globals.bondList.pop().remove();
     }
-    ``
+
     for (let i = 0; i < Globals.desiredBondList.length; i++) {
         if (Globals.bondList[i] == undefined) {
             Globals.bondList.push(new Bond(...Globals.desiredBondList[i]));
@@ -323,6 +394,22 @@ function turn(clockwise = false) {
     bondInputUpdate();
 }
 
+function translate(delQ, delR) {
+    let { atoms, bonds } = getState();
+    for (let a of atoms) {
+        a.q += delQ;
+        a.r += delR;
+    }
+    for (let b of bonds) {
+        b.q1 += delQ;
+        b.r1 += delR;
+        b.q2 += delQ;
+        b.r2 += delR;
+    }
+    setState(atoms, bonds);
+    atomInputUpdate();
+    bondInputUpdate();
+}
 
 function getState() {
     let atoms = Globals.atomList.map((a) => {
