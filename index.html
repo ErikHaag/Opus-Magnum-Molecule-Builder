@@ -89,13 +89,19 @@
             <hr />
             <button id="save" title="Save this molecule as a text file">Save as text</button>
             <a id="downloadText" download="molecule.txt" class="display: none;"></a>
-            <button id="export" title="Save this molecule as an SVG">Export as SVG</button>
+            <button id="exportPNG" title="Save this molecule as an PNG">Export as PNG</button>
+            <button id="exportSVG" title="Save this molecule as an SVG">Export as SVG</button>
             <a id="downloadImage" download="molecule.svg" class="display: none;"></a>
             <hr />
             <button id="load" title="Load a molecule from a text file">Load</button>
             <input id="loadInput" type="file" accept=".txt" />
             <br />
         </fieldset>
+    </div>
+    <!-- workaround to get sensible output from  getCTM() -->
+    <div style="position: absolute; opacity: 0;">
+        <canvas id="canvas"></canvas>
+        <svg id="canvasSrc" width="500"></svg>
     </div>
     <hr />
     <h3 id="atoms">Available atoms</h3>

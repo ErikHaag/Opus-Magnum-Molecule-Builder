@@ -17,10 +17,14 @@ class Elements {
 
         this.saveButton = document.getElementById("save");
         this.saveLink = document.getElementById("downloadText");
-        this.exportButton = document.getElementById("export");
+        this.exportPNGButton = document.getElementById("exportPNG");
+        this.exportSVGButton = document.getElementById("exportSVG");
         this.exportLink = document.getElementById("downloadImage");
         this.loadButton = document.getElementById("load");
         this.fileInput = document.getElementById("loadInput");
+
+        this.canvas = document.getElementById("canvas");
+        this.canvasSrc = document.getElementById("canvasSrc");
 
         this.atomList = document.getElementById("atomList");
     }
@@ -43,10 +47,14 @@ class Elements {
 
     static saveButton;
     static saveLink;
-    static exportButton;
+    static exportPNGButton;
+    static exportSVGButton;
     static exportLink;
     static loadButton;
     static fileInput;
+
+    static canvas;
+    static canvasSrc;
 
     static atomList
 }
@@ -58,6 +66,8 @@ class Globals {
 
     static atomList = [];
     static bondList = [];
+
+    static canvasBlobURL;
 }
 
 document.addEventListener("DOMContentLoaded", initialize);
@@ -143,7 +153,8 @@ function initialize() {
 
     Elements.loadButton.addEventListener("click", () => loadFile());
     Elements.saveButton.addEventListener("click", () => saveFile());
-    Elements.exportButton.addEventListener("click", () => exportImage());
+    Elements.exportPNGButton.addEventListener("click", () => exportImagePNG());
+    Elements.exportSVGButton.addEventListener("click", () => exportImageSVG());
     window.setInterval(displayUpdate, 1000);
 }
 
