@@ -164,7 +164,7 @@ function atomInputUpdate(userUpdate = false) {
     let autobonds = [];
 
     let inp = Elements.atomInput.value.toLowerCase()
-        .split("\n")
+        .split(/\n|\|/)
         .map((s) => s.replaceAll(/[_ ]+/g, "_"))
         .map((s, i) => {
             let r = /^_?\(_(?<q>-?\d+)_(?<r>-?\d+)_?$/g.exec(s);
@@ -269,7 +269,7 @@ function inferNamespace(atomName) {
 
 function bondInputUpdate() {
     let i = Elements.bondInput.value.toLowerCase()
-        .split("\n")
+        .split(/\n|\|/)
         .map((s) => s.replaceAll("_", " ").replaceAll(/ +/g, " "))
         .map((s) => {
             try {
