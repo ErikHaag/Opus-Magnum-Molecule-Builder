@@ -85,7 +85,7 @@ function initialize() {
         import("https://cdn.jsdelivr.net/gh/ErikHaag/Opus-Magnum-Assets/combining/atomMerge.js")
     ]).then(async (v) => {
         await Promise.all([
-            v[0].expandAtomSymbols(symbols, { mode: 3 }),
+            v[0].expandAtomSymbols(symbols, { mode: 3, allowOutlines: true }),
             v[1].expandAtomBases(bases, { mode: 1 })
         ]);
         v[2].atomMerge(Elements.atomCollage, symbols, bases, { mode: 1 });
