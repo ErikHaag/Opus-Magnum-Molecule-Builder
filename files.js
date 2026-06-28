@@ -197,6 +197,7 @@ function exportImagePNG() {
             ctx.strokeStyle = stroke;
             ctx.lineCap = action.getAttribute("stroke-linecap") ?? "butt";
             ctx.lineWidth = Number.parseFloat(action.getAttribute("stroke-width") ?? "1");
+            ctx.globalAlpha = Number.parseFloat(action.getAttribute("stroke-opacity") ?? "1");
             ctx.stroke(path);
         }
     }
