@@ -14,6 +14,7 @@ class Elements {
         this.rotateCCWButton = document.getElementById("turnCCW");
         this.rotateCWButton = document.getElementById("turnCW");
         this.translateButtons = ["NE", "E", "SE", "SW", "W", "NW"].map((v) => document.getElementById(`move${v}`));
+        this.mirrorButton = document.getElementById("mirror");
 
         this.saveButton = document.getElementById("save");
         this.saveLink = document.getElementById("downloadText");
@@ -43,7 +44,7 @@ class Elements {
     static rotateCCWButton;
     static rotateCWButton;
     static translateButtons;
-
+    static mirrorButton;
 
     static saveButton;
     static saveLink;
@@ -139,7 +140,7 @@ function initialize() {
 
     Elements.atomInput.addEventListener("focusout", () => atomInputUpdate(true));
     Elements.bondInput.addEventListener("focusout", () => bondInputUpdate(true));
-    
+
     Elements.cleanupButton.addEventListener("click", () => cleanup());
     Elements.rotateCCWButton.addEventListener("click", () => turn(false));
     Elements.rotateCWButton.addEventListener("click", () => turn(true));
@@ -149,7 +150,7 @@ function initialize() {
     Elements.translateButtons[3].addEventListener("click", () => translate(0n, -1n));
     Elements.translateButtons[4].addEventListener("click", () => translate(-1n, 0n));
     Elements.translateButtons[5].addEventListener("click", () => translate(-1n, 1n));
-
+    Elements.mirrorButton.addEventListener("click", () => mirror());
 
     Elements.loadButton.addEventListener("click", () => loadFile());
     Elements.saveButton.addEventListener("click", () => saveFile());
@@ -375,6 +376,37 @@ function cleanup() {
     bondInputUpdate();
 }
 
+function mirror() {
+    let { atoms, bonds } = getState();
+    for (let a of atoms) {
+        a.q = -(a.q + a.r);
+    }
+    for (let b of bonds) {
+        b.q1 = -(b.q1 + b.r1);
+        b.q2 = -(b.q2 + b.r2);
+    }
+    setState(atoms, bonds);
+    atomInputUpdate();
+    bondInputUpdate();
+}
+
+function translate(delQ, delR) {
+    let { atoms, bonds } = getState();
+    for (let a of atoms) {
+        a.q += delQ;
+        a.r += delR;
+    }
+    for (let b of bonds) {
+        b.q1 += delQ;
+        b.r1 += delR;
+        b.q2 += delQ;
+        b.r2 += delR;
+    }
+    setState(atoms, bonds);
+    atomInputUpdate();
+    bondInputUpdate();
+}
+
 function turn(clockwise = false) {
     let { atoms, bonds } = getState();
     for (let a of atoms) {
@@ -399,23 +431,6 @@ function turn(clockwise = false) {
             b.q2 = q2;
             b.r2 = r2;
         }
-    }
-    setState(atoms, bonds);
-    atomInputUpdate();
-    bondInputUpdate();
-}
-
-function translate(delQ, delR) {
-    let { atoms, bonds } = getState();
-    for (let a of atoms) {
-        a.q += delQ;
-        a.r += delR;
-    }
-    for (let b of bonds) {
-        b.q1 += delQ;
-        b.r1 += delR;
-        b.q2 += delQ;
-        b.r2 += delR;
     }
     setState(atoms, bonds);
     atomInputUpdate();
