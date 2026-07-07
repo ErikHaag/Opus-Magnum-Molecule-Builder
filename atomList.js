@@ -61,4 +61,5 @@ function generateAtomList() {
             grid.appendChild(nameCell);
         }
     }
+    tempElement.remove();
 }
