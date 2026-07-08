@@ -144,12 +144,12 @@ function initialize() {
     Elements.cleanupButton.addEventListener("click", () => cleanup());
     Elements.rotateCCWButton.addEventListener("click", () => turn(false));
     Elements.rotateCWButton.addEventListener("click", () => turn(true));
-    Elements.translateButtons[0].addEventListener("click", () => translate(0n, 1n));
-    Elements.translateButtons[1].addEventListener("click", () => translate(1n, 0n));
-    Elements.translateButtons[2].addEventListener("click", () => translate(1n, -1n));
-    Elements.translateButtons[3].addEventListener("click", () => translate(0n, -1n));
-    Elements.translateButtons[4].addEventListener("click", () => translate(-1n, 0n));
-    Elements.translateButtons[5].addEventListener("click", () => translate(-1n, 1n));
+    Elements.translateButtons[0].addEventListener("click", () => translate(new HexIndex(0n, 1n)));
+    Elements.translateButtons[1].addEventListener("click", () => translate(new HexIndex(1n, 0n)));
+    Elements.translateButtons[2].addEventListener("click", () => translate(new HexIndex(1n, -1n)));
+    Elements.translateButtons[3].addEventListener("click", () => translate(new HexIndex(0n, -1n)));
+    Elements.translateButtons[4].addEventListener("click", () => translate(new HexIndex(-1n, 0n)));
+    Elements.translateButtons[5].addEventListener("click", () => translate(new HexIndex(-1n, 1n)));
     Elements.mirrorButton.addEventListener("click", () => mirror());
 
     Elements.loadButton.addEventListener("click", () => loadFile());
@@ -352,7 +352,7 @@ function getAtomBoundingBox() {
         yMax = 0;
     } else {
         for (let a of Globals.atomList) {
-            let [x, y] = HexIndex.toXY(a.q, a.r);
+            let [x, y] = a.pos.toXY();
             xMin = Math.min(xMin, x - 45);
             yMin = Math.min(yMin, y - 45);
             xMax = Math.max(xMax, x + 45);
@@ -379,28 +379,25 @@ function cleanup() {
 function mirror() {
     let { atoms, bonds } = getState();
     for (let a of atoms) {
-        a.q = -(a.q + a.r);
+        a.pos.mirror();
     }
     for (let b of bonds) {
-        b.q1 = -(b.q1 + b.r1);
-        b.q2 = -(b.q2 + b.r2);
+        b.start.mirror();
+        b.end.mirror();
     }
     setState(atoms, bonds);
     atomInputUpdate();
     bondInputUpdate();
 }
 
-function translate(delQ, delR) {
+function translate(del) {
     let { atoms, bonds } = getState();
     for (let a of atoms) {
-        a.q += delQ;
-        a.r += delR;
+        a.pos.increment(del);
     }
     for (let b of bonds) {
-        b.q1 += delQ;
-        b.r1 += delR;
-        b.q2 += delQ;
-        b.r2 += delR;
+        b.start.increment(del);
+        b.end.increment(del);
     }
     setState(atoms, bonds);
     atomInputUpdate();
@@ -410,26 +407,22 @@ function translate(delQ, delR) {
 function turn(clockwise = false) {
     let { atoms, bonds } = getState();
     for (let a of atoms) {
-        let q = clockwise ? a.q + a.r : -a.r;
-        let r = clockwise ? -a.q : a.q + a.r;
-        a.q = q;
-        a.r = r;
+        if (clockwise) {
+            a.pos.rotateClockwise();
+        } else {
+            a.pos.rotateCounterClockwise();
+        }
     }
     for (let b of bonds) {
-        let q1 = clockwise ? b.q1 + b.r1 : -b.r1;
-        let r1 = clockwise ? -b.q1 : b.q1 + b.r1;
-        let q2 = clockwise ? b.q2 + b.r2 : -b.r2;
-        let r2 = clockwise ? -b.q2 : b.q2 + b.r2;
-        if (HexIndex.compare(q1, r1, q2, r2) > 0) {
-            b.q1 = q2;
-            b.r1 = r2;
-            b.q2 = q1;
-            b.r2 = r1;
+        if (clockwise) {
+            b.start.rotateClockwise();
+            b.end.rotateClockwise();
         } else {
-            b.q1 = q1;
-            b.r1 = r1;
-            b.q2 = q2;
-            b.r2 = r2;
+            b.start.rotateCounterClockwise();
+            b.end.rotateCounterClockwise();
+        }
+        if (HexIndex.compare(b.start.q, b.start.r, b.end.q, b.end.r) > 0) {
+            [b.start, b.end] = [b.end, b.start];
         }
     }
     setState(atoms, bonds);
@@ -443,17 +436,14 @@ function getState() {
         return {
             namespace: a.atomType.substring(nsS + 2),
             atomType: a.atomType.substring(0, nsS),
-            q: a.q,
-            r: a.r
+            pos: a.pos.copy()
         };
     });
     let bonds = Globals.bondList.map((b) => {
         return {
             bondType: b.bondType,
-            q1: b.q1,
-            r1: b.r1,
-            q2: b.q2,
-            r2: b.r2
+            start: b.start.copy(),
+            end: b.end.copy()
         };
     });
     return { atoms, bonds };
@@ -463,7 +453,7 @@ function removeOverlapping(atoms, bonds) {
     if (atoms != null) {
         outer: for (let i = 0; i < atoms.length - 1; i++) {
             for (let j = i + 1; j < atoms.length; j++) {
-                if (atoms[j].q == atoms[i].q && atoms[j].r == atoms[i].r) {
+                if (atoms[i].pos.equals(atoms[j].pos)) {
                     // another atom is covering this one.
                     atoms.splice(i--, 1);
                     continue outer;
@@ -475,7 +465,7 @@ function removeOverlapping(atoms, bonds) {
     if (bonds != null) {
         outer: for (let i = 0; i < bonds.length - 1; i++) {
             for (let j = i + 1; j < bonds.length; j++) {
-                if (bonds[j].q1 == bonds[i].q1 && bonds[j].r1 == bonds[i].r1 && bonds[j].q2 == bonds[i].q2 && bonds[j].r2 == bonds[i].r2) {
+                if (bonds[i].start.equals(bonds[j].start) && bonds[i].end.equals(bonds[j].end)) {
                     // bonds connect the same atoms, and therefore overlap
                     bonds.splice(i--, 1);
                     continue outer;
@@ -488,31 +478,25 @@ function removeOverlapping(atoms, bonds) {
 function reorderEntries(atoms, bonds) {
     if (atoms != null) {
         atoms.sort((a, b) => {
-            let diff = a.q - b.q;
-            if (diff != 0n) {
-                return diff > 0n ? 1 : -1;
-            }
-            diff = a.r - b.r;
-            return diff > 0n ? 1 : -1;
+            return HexIndex.compare(a.pos.q, a.pos.r, b.pos.q, b.pos.r);
         });
     }
     if (bonds != null) {
         bonds.sort((a, b) => {
-            let x = HexIndex.compare(a.q1, a.r1, b.q1, b.r1);
-            return (x != 0) ? x : HexIndex.compare(a.q2, a.r2, b.q2, b.r2);
+            let x = HexIndex.compare(a.start.q, a.start.r, b.start.q, b.end.r);
+            return (x != 0) ? x : HexIndex.compare(a.end.q, a.end.r, b.end.q, b.end.r);
         });
     }
 }
 
 function setState(atoms, bonds) {
     if (atoms != null) {
-
         Elements.atomInput.value = atoms.map((a) => `${(inferNamespace(a.atomType)[0] == null
             ? a.namespace + ":" : ""
-        ) + a.atomType.replaceAll("_", " ")} ${a.q} ${a.r}`)
+        ) + a.atomType.replaceAll("_", " ")} ${a.pos.q} ${a.pos.r}`)
             .join("\n");
     }
     if (bonds != null) {
-        Elements.bondInput.value = bonds.map((b) => `${b.bondType} ${b.q1} ${b.r1} ${b.q2} ${b.r2}`).join("\n");
+        Elements.bondInput.value = bonds.map((b) => `${b.bondType} ${b.start.q} ${b.start.r} ${b.end.q} ${b.end.r}`).join("\n");
     }
 }

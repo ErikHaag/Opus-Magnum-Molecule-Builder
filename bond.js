@@ -27,17 +27,15 @@ class Bond {
             r1 = r2;
             r2 = temp;
         }
-        if (this.q1 == q1 && this.r1 == r1 && this.q2 == q2 && this.r2 == r2) {
+        if (this.start?.q == q1 && this.start?.r == r1 && this.end?.q == q2 && this.end?.r == r2) {
             return;
         }
 
-        this.q1 = q1;
-        this.r1 = r1;
-        this.q2 = q2;
-        this.r2 = r2;
+        this.start = new HexIndex(q1, r1);
+        this.end = new HexIndex(q2, r2);
 
-        let [x1, y1] = HexIndex.toXY(this.q1, this.r1);
-        let [x2, y2] = HexIndex.toXY(this.q2, this.r2);
+        let [x1, y1] = this.start.toXY();
+        let [x2, y2] = this.end.toXY();
 
         let angle = 180 * (Math.atan2(y2 - y1, x2 - x1) / Math.PI);
 

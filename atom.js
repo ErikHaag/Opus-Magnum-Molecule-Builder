@@ -18,12 +18,11 @@ class Atom {
     }
 
     setPosition(q, r) {
-        if (this.q == q && this.r == r) {
+        if (this.pos?.q == q && this.pos?.r == r) {
             return;
         }
-        this.q = q;
-        this.r = r;
-        let [x, y] = HexIndex.toXY(this.q, this.r);
+        this.pos = new HexIndex(q, r);
+        let [x, y] = this.pos.toXY();
         x -= 30;
         y -= 30;
         this.elem.setAttribute("transform", `translate(${x}, ${y})`);
