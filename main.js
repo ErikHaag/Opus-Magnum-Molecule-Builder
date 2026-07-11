@@ -218,7 +218,7 @@ function atomInputUpdate(userUpdate = false) {
                 [namespace, namespaceList] = inferNamespace(g.name);
                 if (namespace == null) {
                     if (namespaceList != null) {
-                        Elements.bondError.setError("The atom \"" + g.name + "\" is ambiguous, please prepend one of the following namespaces, followed by a colon (:)\n" + namespaceList.join("\n"));
+                        Elements.atomError.setError("The atom \"" + g.name + "\" is ambiguous, please prepend one of the following namespaces, followed by a colon (:)\n" + namespaceList.join("\n"));
                     }
                     return s.replaceAll("_", " ");
                 }
