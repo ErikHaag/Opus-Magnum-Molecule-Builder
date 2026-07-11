@@ -4,11 +4,14 @@ class Elements {
         this.atomCollage = document.getElementById("atomCollage");
         this.camera = document.getElementById("camera");
         this.atomContainer = document.getElementById("atoms");
+        this.ghostAtomContainer = document.getElementById("ghostAtoms");
         this.bondContainer = document.getElementById("bonds");
+        this.ghostBondContainer = document.getElementById("ghostBonds");
 
         this.atomInput = document.getElementById("atomInput");
-        this.atomError = document.getElementById("atomError");
+        this.atomError = new ErrorDisplayer(document.getElementById("atomError"));
         this.bondInput = document.getElementById("bondInput");
+        this.bondError = new ErrorDisplayer(document.getElementById("bondError"));
 
         this.cleanupButton = document.getElementById("cleanup");
         this.rotateCCWButton = document.getElementById("turnCCW");
@@ -34,11 +37,14 @@ class Elements {
     static bondCollage;
     static camera;
     static atomContainer;
+    static ghostAtomContainer;
     static bondContainer;
+    static ghostBondContainer;
 
     static atomInput;
     static atomError;
     static bondInput;
+    static bondError;
 
     static cleanupButton;
     static rotateCCWButton;
@@ -61,12 +67,19 @@ class Elements {
 }
 
 class Globals {
+    static ghostRepetitions = 3;
+
     static desiredAtomList = [];
     static desiredBondList = [];
     static modified = false;
+    static ghosts = false;
+    static repeatAtomIndex = -1;
+    static repeatOffset = new HexIndex(0n, 0n);
 
     static atomList = [];
+    static ghostAtomList = [];
     static bondList = [];
+    static ghostBondList = [];
 
     static canvasBlobURL;
 }
@@ -156,12 +169,14 @@ function initialize() {
     Elements.saveButton.addEventListener("click", () => saveFile());
     Elements.exportPNGButton.addEventListener("click", () => exportImagePNG());
     Elements.exportSVGButton.addEventListener("click", () => exportImageSVG());
+    setState([{ namespace: 'opus_magnum', atomType: 'gold', pos: new HexIndex(0n, 0n) }, { namespace: 'opus_magnum', atomType: 'quicksilver', pos: new HexIndex(1n, -1n) }, { namespace: 'opus_magnum', atomType: 'silver', pos: new HexIndex(1n, 0n) }, { namespace: 'opus_magnum', atomType: 'quicksilver', pos: new HexIndex(2n, -1n) }, { namespace: 'opus_magnum', atomType: 'copper', pos: new HexIndex(2n, 0n) }, { namespace: 'opus_magnum', atomType: 'quicksilver', pos: new HexIndex(3n, -1n) }, { namespace: 'opus_magnum', atomType: 'iron', pos: new HexIndex(3n, 0n) }, { namespace: 'opus_magnum', atomType: 'quicksilver', pos: new HexIndex(4n, -1n) }, { namespace: 'opus_magnum', atomType: 'tin', pos: new HexIndex(4n, 0n) }, { namespace: 'opus_magnum', atomType: 'repeat', pos: new HexIndex(5n, -2n) }, { namespace: 'opus_magnum', atomType: 'quicksilver', pos: new HexIndex(5n, -1n) }, { namespace: 'opus_magnum', atomType: 'lead', pos: new HexIndex(5n, 0n) }], [{ bondType: 'normal', start: new HexIndex(0n, 0n), end: new HexIndex(1n, -1n) }, { bondType: 'normal', start: new HexIndex(1n, -1n), end: new HexIndex(1n, 0n) }, { bondType: 'normal', start: new HexIndex(1n, 0n), end: new HexIndex(2n, -1n) }, { bondType: 'normal', start: new HexIndex(2n, -1n), end: new HexIndex(2n, 0n) }, { bondType: 'normal', start: new HexIndex(2n, 0n), end: new HexIndex(3n, -1n) }, { bondType: 'normal', start: new HexIndex(3n, -1n), end: new HexIndex(3n, 0n) }, { bondType: 'normal', start: new HexIndex(3n, 0n), end: new HexIndex(4n, -1n) }, { bondType: 'normal', start: new HexIndex(4n, -1n), end: new HexIndex(4n, 0n) }, { bondType: 'normal', start: new HexIndex(4n, -1n), end: new HexIndex(5n, -2n) }, { bondType: 'normal', start: new HexIndex(4n, 0n), end: new HexIndex(5n, -1n) }, { bondType: 'normal', start: new HexIndex(5n, -1n), end: new HexIndex(5n, 0n) }, { bondType: 'normal', start: new HexIndex(5n, -1n), end: new HexIndex(6n, -2n) }]);
+    atomInputUpdate();
+    bondInputUpdate();
     window.setInterval(displayUpdate, 1000);
 }
 
 function atomInputUpdate(userUpdate = false) {
-    let error = "";
-
+    Elements.atomError.reset();
     let autobonds = [];
 
     let inp = Elements.atomInput.value.toLowerCase()
@@ -206,14 +221,13 @@ function atomInputUpdate(userUpdate = false) {
                 [namespace, namespaceList] = inferNamespace(g.name);
                 if (namespace == null) {
                     if (namespaceList != null) {
-                        error ||= "The atom \"" + g.name + "\" is ambiguous, please prepend one of the following namespaces, followed by a colon (:)\n" + namespaceList.join("\n");
+                        Elements.bondError.setError("The atom \"" + g.name + "\" is ambiguous, please prepend one of the following namespaces, followed by a colon (:)\n" + namespaceList.join("\n"));
                     }
                     return s.replaceAll("_", " ");
                 }
             }
             return [namespace, g.name.toLowerCase(), BigInt(g.q), BigInt(g.r)];
         });
-    Elements.atomError.innerText = error;
     if (userUpdate && autobonds.length) {
         let newBonds = [];
         let linesToRemove = [];
@@ -269,6 +283,7 @@ function inferNamespace(atomName) {
 }
 
 function bondInputUpdate() {
+    Elements.bondError.reset();
     let i = Elements.bondInput.value.toLowerCase()
         .split(/\n|\|/)
         .map((s) => s.replaceAll("_", " ").replaceAll(/ +/g, " "))
@@ -282,7 +297,6 @@ function bondInputUpdate() {
         });
 
     Elements.bondInput.value = i.map((v) => typeof (v) == "string" ? v : v.join(" ")).join("\n").replaceAll("_", " ");
-
     Globals.desiredBondList = i.filter((i) => typeof (i) != "string");
     Globals.modified = true;
 }
@@ -295,13 +309,12 @@ function displayUpdate() {
 
     // atoms
     while (Globals.atomList.length > Globals.desiredAtomList.length) {
-        Globals.atomList.pop().remove();
+        Globals.atomList.pop()?.remove();
     }
 
     for (let i = 0; i < Globals.desiredAtomList.length; i++) {
-        if (Globals.atomList[i] == undefined) {
-            Globals.atomList.push(new Atom(Globals.desiredAtomList[i][1] + "__" + Globals.desiredAtomList[i][0], Globals.desiredAtomList[i][2], Globals.desiredAtomList[i][3]));
-            continue;
+        if (!(Globals.atomList[i] instanceof Atom)) {
+            Globals.atomList[i] = new Atom();
         }
         Globals.atomList[i].setAtomType(Globals.desiredAtomList[i][1] + "__" + Globals.desiredAtomList[i][0]);
         Globals.atomList[i].setPosition(Globals.desiredAtomList[i][2], Globals.desiredAtomList[i][3]);
@@ -313,12 +326,75 @@ function displayUpdate() {
     }
 
     for (let i = 0; i < Globals.desiredBondList.length; i++) {
-        if (Globals.bondList[i] == undefined) {
-            Globals.bondList.push(new Bond(...Globals.desiredBondList[i]));
-            continue;
+        if (!(Globals.bondList[i] instanceof Bond)) {
+            Globals.bondList[i] = new Bond();
         }
         Globals.bondList[i].setBondType(Globals.desiredBondList[i][0]);
         Globals.bondList[i].setPosition(Globals.desiredBondList[i][1], Globals.desiredBondList[i][2], Globals.desiredBondList[i][3], Globals.desiredBondList[i][4]);
+    }
+
+
+    polymerValidation();
+
+    // ghost atoms
+    {
+        let gAC = Globals.ghosts ? Globals.ghostRepetitions * (Globals.desiredAtomList.length - 1) : 0;
+        while (Globals.ghostAtomList.length > gAC) {
+            Globals.ghostAtomList.pop()?.remove();
+        }
+
+        if (Globals.ghosts) {
+            const reps = BigInt(Globals.ghostRepetitions);
+            let k = 0;
+            let offset = new HexIndex(0n, 0n);
+            for (let i = 0n; i < reps; i++) {
+                offset.increment(Globals.repeatOffset);
+                for (let j = 0; j < Globals.atomList.length; j++) {
+                    if (j == Globals.repeatAtomIndex) {
+                        continue;
+                    }
+                    if (!(Globals.ghostAtomList[k] instanceof Atom)) {
+                        Globals.ghostAtomList[k] = new Atom(true);
+                    }
+                    Globals.ghostAtomList[k].setAtomType(Globals.atomList[j].atomType);
+                    let p = offset.copy();
+                    p.increment(Globals.atomList[j].pos);
+                    Globals.ghostAtomList[k].setPosition(p.q, p.r);
+                    k++;
+                }
+            }
+        }
+    }
+
+    // ghost bonds
+    {
+        let gBC = Globals.ghosts ? Globals.ghostRepetitions * Globals.desiredBondList.length : 0;
+        while (Globals.ghostBondList.length > gBC) {
+            Globals.ghostBondList.pop()?.remove();
+        }
+
+        if (Globals.ghosts) {
+
+            const reps = BigInt(Globals.ghostRepetitions);
+            let k = 0;
+            let offset = new HexIndex(0n, 0n);
+            for (let i = 0; i < Globals.ghostRepetitions; i++) {
+                offset.increment(Globals.repeatOffset);
+                for (let j = 0; j < Globals.desiredBondList.length; j++) {
+                    if (!(Globals.ghostBondList[k] instanceof Bond)) {
+                        Globals.ghostBondList[k] = new Bond(true);
+                    }
+                    Globals.ghostBondList[k].setBondType(Globals.desiredBondList[j][0]);
+                    let start = new HexIndex(Globals.desiredBondList[j][1], Globals.desiredBondList[j][2]);
+                    let end = new HexIndex(Globals.desiredBondList[j][3], Globals.desiredBondList[j][4]);
+                    start.increment(offset);
+                    end.increment(offset)
+                    Globals.ghostBondList[k].setPosition(start.q, start.r, end.q, end.r);
+                    k++;
+                }
+
+            }
+        }
     }
 
     let { xMin, yMin, xMax, yMax } = getAtomBoundingBox();
@@ -335,8 +411,156 @@ function displayUpdate() {
     let spanX = xMax - xMin;
     let spanY = yMax - yMin;
     let scale = 500 / Math.max(500, spanX, spanY);
-
     Elements.camera.setAttribute("transform", `translate(250, 250) scale(${scale}) translate(${-centerX}, ${-centerY})`);
+
+    updateUI();
+}
+
+function updateUI() {
+    Elements.atomError.update();
+    Elements.bondError.update();
+    
+    let errored = Elements.atomError.hasError || Elements.bondError.hasError;
+    Elements.exportPNGButton.disabled = errored;
+    Elements.exportSVGButton.disabled = errored;
+}
+
+function polymerValidation() {
+    Globals.ghosts = false;
+    if (Globals.atomList.findIndex((a) => a.pos.q == 0n && a.pos.r == 0n) == -1) {
+        Elements.atomError.setError("There must be an atom in the center of the board.");
+        return;
+    }
+    
+    Globals.repeatAtomIndex = Globals.atomList.findIndex((a) => a.atomType == "repeat__opus_magnum");
+    if (Globals.repeatAtomIndex == -1) {
+        return;
+    }
+    Globals.repeatOffset = Globals.atomList[Globals.repeatAtomIndex].pos.copy();
+    const secondaryRepeatIndex = Globals.atomList.findIndex((a, i) => i > Globals.repeatAtomIndex && a.atomType == "`repeat__opus_magnum");
+    if (secondaryRepeatIndex != -1) {
+        Elements.atomError.setError("You cannot have more than 1 repeat atom on the board.", secondaryRepeatIndex);
+        return;
+    }
+    if (Globals.repeatOffset.q == 0n && Globals.repeatOffset.r == 0n) {
+        Elements.atomError.setError("The repeat atom may not lie on the center of the board.");
+        return;
+    }
+    
+    Globals.ghosts = true;
+    // test for overlapping atoms
+    for (let i = 0; i < Globals.atomList.length - 1; i++) {
+        if (i == Globals.repeatAtomIndex) {
+            continue;
+        }
+        const atomI = Globals.atomList[i];
+        for (let j = i + 1; j < Globals.atomList.length; j++) {
+            if (j == Globals.repeatAtomIndex) {
+                continue;
+            }
+            const atomJ = Globals.atomList[j];
+            let info = polymerCollision(atomI.pos.q, atomI.pos.r, atomJ.pos.q, atomJ.pos.r);
+            if (info.collides) {
+                Elements.atomError.setError(`The atoms \"${atomI}\" and \"${atomJ}\" will overlap in the polymer.`, j);
+                return;
+            }
+        }
+    }
+    // test for overlapping bonds
+    for (let i = 0; i < Globals.bondList.length - 1; i++) {
+        const bondI = Globals.bondList[i];
+        for (let j = i + 1; j < Globals.bondList.length; j++) {
+            const bondJ = Globals.bondList[j];
+            let startInfo = polymerCollision(bondI.start.q, bondI.start.r, bondJ.start.q, bondJ.start.r);
+            if (startInfo.collides) {
+                let endInfo = polymerCollision(bondI.end.q, bondI.end.r, bondJ.end.q, bondJ.end.r);
+                if (endInfo.collides && startInfo.deltaMonomer == endInfo.deltaMonomer) {
+                    Elements.bondError.setError(`The bonds \"${bondI}\" and \"${bondJ}\" will overlap in this polymer`, j);
+                    return;
+                }
+            }
+        }
+    }
+    // test for hanging bonds
+    for (let i = 0; i < Globals.bondList.length; i++) {
+        let bond = Globals.bondList[i];
+        let startAtomIndex = Globals.atomList.findIndex((a) => a.pos.equals(bond.start));
+        if (startAtomIndex == Globals.repeatAtomIndex) {
+            startAtomIndex = -1;
+        }
+        let endAtomIndex = Globals.atomList.findIndex((a) => a.pos.equals(bond.end));
+        if (endAtomIndex == Globals.repeatAtomIndex) {
+            endAtomIndex = -1;
+        }
+        if (startAtomIndex == -1 && endAtomIndex == -1) {
+            for (let j = 0; j < Globals.atomList.length; j++) {
+                if (j == Globals.repeatAtomIndex) {
+                    continue;
+                }
+                if ((polymerCollision(bond.start.q, bond.start.r, Globals.atomList[j].pos.q, Globals.atomList[j].pos.r)).collides || (polymerCollision(bond.end.q, bond.end.r, Globals.atomList[j].pos.q, Globals.atomList[j].pos.r)).collides) {
+                    Elements.bondError.setError("The bond \"" + bond + "\" connect atoms in later monomers.", i);
+                    return;
+                }
+            }
+        }
+    }
+
+}
+
+function polymerCollision(q1, r1, q2, r2) {
+    if (Globals.repeatOffset.q == 0n && Globals.repeatOffset.r == 0n) {
+        return { collides: (q1 == q2) && (r1 == r2), deltaMonomer: 0n }
+    }
+    const qDiff = q2 - q1;
+    const rDiff = r2 - r1;
+    if (Globals.repeatOffset.q == 0n) {
+        if (qDiff == 0n && rDiff % Globals.repeatOffset.r == 0n) {
+            return { collides: true, deltaMonomer: rDiff / Globals.repeatOffset.r };
+        }
+    } else if (Globals.repeatOffset.r == 0n) {
+        if (rDiff == 0n && qDiff % Globals.repeatOffset.q == 0n) {
+            return { collides: true, deltaMonomer: qDiff / Globals.repeatOffset.q };
+        }
+    } else if (qDiff % Globals.repeatOffset.q == 0n) {
+        if (r1 + (qDiff / Globals.repeatOffset.q) * Globals.repeatOffset.r == r2) {
+            return { collides: true, deltaMonomer: qDiff / Globals.repeatOffset.q };
+        }
+    }
+    return { collides: false, deltaMonomer: 0n };
+}
+
+function* getRepeatAtomPositions() {
+    o: for (let bond of Globals.bondList) {
+        let startAtomIndex = Globals.atomList.findIndex((a) => a.pos.equals(bond.start));
+        if (startAtomIndex == Globals.repeatAtomIndex) {
+            startAtomIndex = -1;
+        }
+        let endAtomIndex = Globals.atomList.findIndex((a) => a.pos.equals(bond.end));
+        if (endAtomIndex == Globals.repeatAtomIndex) {
+            endAtomIndex = -1;
+        }
+        if (startAtomIndex == -1 && endAtomIndex != -1) {
+            for (let i = 0; i < Globals.atomList.length; i++) {
+                if (i == Globals.repeatAtomIndex) {
+                    continue;
+                }
+                if ((polymerCollision(bond.start.q, bond.start.r, Globals.atomList[i].pos.q, Globals.atomList[i].pos.r)).collides) {
+                    yield bond.start.copy();
+                    continue o;
+                }
+            }
+        } else if (startAtomIndex != -1 && endAtomIndex == -1) {
+            for (let i = 0; i < Globals.atomList.length; i++) {
+                if (i == Globals.repeatAtomIndex) {
+                    continue;
+                }
+                if ((polymerCollision(bond.end.q, bond.end.r, Globals.atomList[i].pos.q, Globals.atomList[i].pos.r)).collides) {
+                    yield bond.end.copy();
+                    continue o;
+                }
+            }
+        }
+    }
 }
 
 function getAtomBoundingBox() {
@@ -449,6 +673,11 @@ function getState() {
     return { atoms, bonds };
 }
 
+/**
+ * 
+ * @param {Atom[]} atoms 
+ * @param {Bond[]} bonds 
+ */
 function removeOverlapping(atoms, bonds) {
     if (atoms != null) {
         outer: for (let i = 0; i < atoms.length - 1; i++) {
@@ -483,7 +712,7 @@ function reorderEntries(atoms, bonds) {
     }
     if (bonds != null) {
         bonds.sort((a, b) => {
-            let x = HexIndex.compare(a.start.q, a.start.r, b.start.q, b.end.r);
+            let x = HexIndex.compare(a.start.q, a.start.r, b.start.q, b.start.r);
             return (x != 0) ? x : HexIndex.compare(a.end.q, a.end.r, b.end.q, b.end.r);
         });
     }
@@ -491,10 +720,7 @@ function reorderEntries(atoms, bonds) {
 
 function setState(atoms, bonds) {
     if (atoms != null) {
-        Elements.atomInput.value = atoms.map((a) => `${(inferNamespace(a.atomType)[0] == null
-            ? a.namespace + ":" : ""
-        ) + a.atomType.replaceAll("_", " ")} ${a.pos.q} ${a.pos.r}`)
-            .join("\n");
+        Elements.atomInput.value = atoms.map((a) => `${(inferNamespace(a.atomType)[0] == null ? a.namespace + ":" : "") + a.atomType.replaceAll("_", " ")} ${a.pos.q} ${a.pos.r}`).join("\n");
     }
     if (bonds != null) {
         Elements.bondInput.value = bonds.map((b) => `${b.bondType} ${b.start.q} ${b.start.r} ${b.end.q} ${b.end.r}`).join("\n");

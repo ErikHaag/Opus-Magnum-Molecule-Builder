@@ -1,10 +1,10 @@
 function saveFile() {
     let output = Globals.atomList.map((a) => {
         let [name, namespace] = a.atomType.split("__");
-        return `${namespace}:${name} ${a.q} ${a.r}`;
+        return `${namespace}:${name} ${a.pos.q} ${a.pos.r}`;
     }).join("\n")
         + "\n~~~~~\n"
-        + Globals.bondList.map((b) => `${b.bondType} ${b.q1} ${b.r1} ${b.q2} ${b.r2}`).join("\n");
+        + Globals.bondList.map((b) => `${b.bondType} ${b.start.q} ${b.start.r} ${b.end.q} ${b.end.r}`).join("\n");
     Elements.saveLink.href = "data:text/plain;charset=utf-8," + encodeURIComponent(output);
     Elements.saveLink.click();
 }
@@ -35,18 +35,15 @@ function loadFile() {
                 return {
                     namespace: ns,
                     atomType: an,
-                    q: BigInt(q),
-                    r: BigInt(r)
+                    pos: new HexIndex(BigInt(q), BigInt(r))
                 };
             });
         let bonds = bondString.split("\n").map((s) => {
             let [bt, q1, r1, q2, r2] = s.split(" ");
             return {
                 bondType: bt,
-                q1: BigInt(q1),
-                r1: BigInt(r1),
-                q2: BigInt(q2),
-                r2: BigInt(r2)
+                start: new HexIndex(BigInt(q1), BigInt(r1)),
+                end: new HexIndex(BigInt(q2), BigInt(r2))
             };
         });
 
@@ -57,6 +54,9 @@ function loadFile() {
 }
 
 function exportImageSVG() {
+    if (Elements.atomError.hasError || Elements.bondError.hasError) {
+        return;
+    }
     let svgFrag = "<svg xmlns=\"http://www.w3.org/2000/svg\" "
     let { xMin, yMin, xMax, yMax } = getAtomBoundingBox();
     svgFrag += `viewBox="${xMin} ${yMin} ${xMax - xMin} ${yMax - yMin}" >\n<defs>`
@@ -76,18 +76,31 @@ function exportImageSVG() {
         svgFrag += "\n" + Elements.bondCollage.querySelector(`:scope #${bondType}_bond`).outerHTML.replaceAll(/\n\s+/g, "\n");;
     }
     svgFrag += "\n</defs>";
-    if (atomsUsed.has("repeat__opus_magnum")) {
+    if (Globals.ghosts) {
         svgFrag += "\n<circle r=\"40\" fill=\"none\" stroke=\"#ddd\" stroke-width=\"3\" />"
     }
-    for (let atom of Globals.atomList) {
-        let [x, y] = HexIndex.toXY(atom.q, atom.r);
+    for (let i = 0; i < Globals.atomList.length; i++) {
+        if (Globals.ghosts && i == Globals.repeatAtomIndex) {
+            continue;
+        }
+        let atom = Globals.atomList[i];
+        let [x, y] = atom.pos.toXY();
         x -= 30;
         y -= 30;
         svgFrag += `\n<use href="#OMA_A_${atom.atomType}" transform="translate(${x}, ${y})" />`
     }
+    if (Globals.ghosts) {
+        for (let hex of getRepeatAtomPositions()) {
+            let [x, y] = hex.toXY();
+            x -= 30;
+            y -= 30;
+            svgFrag += `\n<use href="#OMA_A_repeat__opus_magnum" transform="translate(${x}, ${y})" />`
+        }
+    }
+
     for (let bond of Globals.bondList) {
-        let [x1, y1] = HexIndex.toXY(bond.q1, bond.r1);
-        let [x2, y2] = HexIndex.toXY(bond.q2, bond.r2);
+        let [x1, y1] = bond.start.toXY();
+        let [x2, y2] = bond.end.toXY();
 
         let angle = 180 * (Math.atan2(y2 - y1, x2 - x1) / Math.PI);
         svgFrag += `\n<use href="#${bond.bondType}_bond" transform="translate(${(x1 + x2) / 2}, ${(y1 + y2) / 2}) rotate(${angle}) translate(-12, -5)" />`;
@@ -99,6 +112,9 @@ function exportImageSVG() {
 }
 
 function exportImagePNG() {
+    if (Elements.atomError.hasError || Elements.bondError.hasError) {
+        return;
+    }
     let { xMin, yMin, xMax, yMax } = getAtomBoundingBox();
     Elements.canvasSrc.setAttribute("viewBox", `0 0 ${xMax - xMin} ${yMax - yMin}`);
     Elements.canvasSrc.setAttribute("width", xMax - xMin);
@@ -119,7 +135,7 @@ function exportImagePNG() {
         }
     }
 
-    if (Globals.atomList.findIndex((a) => a.atomType == "repeat__opus_magnum") != -1) {
+    if (Globals.ghosts) {
         let circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
         circle.setAttribute("r", "40");
         circle.setAttribute("fill", "none");
@@ -129,24 +145,37 @@ function exportImagePNG() {
         Elements.canvasSrc.appendChild(circle);
     }
 
-    for (let atom of Globals.atomList) {
+    for (let i = 0; i < Globals.atomList.length; i++) {
+        if (Globals.ghosts && i == Globals.repeatAtomIndex) {
+            continue;
+        }
+        let atom = Globals.atomList[i];
         let ref = Elements.atomCollage.querySelector(`:scope #OMA_A_${atom.atomType}`);
         if (!ref) {
             continue;
         }
 
-        let [x, y] = HexIndex.toXY(atom.q, atom.r);
+        let [x, y] = atom.pos.toXY();
         x -= xMin + 30;
         y -= yMin + 30;
         cloneAndFlatten(ref, `translate(${x}, ${y})`);
+    }
+    if (Globals.ghosts) {
+        let ref = Elements.atomCollage.querySelector(":scope #OMA_A_repeat__opus_magnum");
+        for (let hex of getRepeatAtomPositions()) {
+            let [x, y] = hex.toXY();
+            x -= xMin + 30;
+            y -= yMin + 30;
+            cloneAndFlatten(ref, `translate(${x}, ${y})`);
+        }
     }
     for (let bond of Globals.bondList) {
         let ref = Elements.bondCollage.querySelector(`:scope #${bond.bondType}_bond`);
         if (!ref) {
             continue;
         }
-        let [x1, y1] = HexIndex.toXY(bond.q1, bond.r1);
-        let [x2, y2] = HexIndex.toXY(bond.q2, bond.r2);
+        let [x1, y1] = bond.start.toXY();
+        let [x2, y2] = bond.end.toXY();
 
         let angle = 180 * (Math.atan2(y2 - y1, x2 - x1) / Math.PI);
 

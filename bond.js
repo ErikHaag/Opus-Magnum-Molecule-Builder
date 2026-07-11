@@ -1,12 +1,15 @@
 class Bond {
     static bondTypes = [];
 
-    constructor(bondType, q1, r1, q2, r2) {
+    constructor(ghost = false) {
         this.elem = document.createElementNS("http://www.w3.org/2000/svg", "use");
-        Elements.bondContainer.appendChild(this.elem);
-        this.setBondType(bondType);
-        this.setPosition(q1, r1, q2, r2);
+        Elements[ghost ? "ghostBondContainer" : "bondContainer"].appendChild(this.elem);
+        this.setBondType("");
+        this.setPosition(0n, 0n, 0n, 0n);
         this.elem.classList.add("glide");
+        if (ghost) {
+            this.elem.classList.add("ghost");
+        }
     }
 
     setBondType(bondType) {
@@ -46,4 +49,7 @@ class Bond {
         this.elem.remove();
     }
 
+    toString() {
+        return `${this.bondType.replace("_", " ")} ${this.start} ${this.end}`;
+    }
 }

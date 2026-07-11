@@ -45,6 +45,11 @@ class HexIndex {
         this.q = this.s;
     }
 
+    scale(f) {
+        this.q *= f;
+        this.r *= f;
+    }
+
     rotateClockwise() {
         let s = this.s;
         this.r = -this.q
@@ -57,7 +62,11 @@ class HexIndex {
         this.r = -s;
     }
 
+    toString() {
+        return `${this.q} ${this.r}`;   
+    }
+
     toXY() {
-        return [82 * Number(this.q) + 41 * Number(this.r), -Math.sqrt(3) * 41 * Number(this.r)]
+        return [82 * Number(this.q) + 41 * Number(this.r), -Math.sqrt(3) * 41 * Number(this.r)];
     }
 }

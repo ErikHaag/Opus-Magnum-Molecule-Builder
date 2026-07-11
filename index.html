@@ -5,6 +5,10 @@
     <meta charset='utf-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1'>
     <title>OMMMB</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net/gh/ErikHaag/Opus-Magnum-Assets/symbols/atomSymbolsExpand.js">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net/gh/ErikHaag/Opus-Magnum-Assets/bases/atomBasesExpand.js">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net/gh/ErikHaag/Opus-Magnum-Assets/combining/atomMerge.js">`
+
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ErikHaag/Opus-Magnum-Assets/symbols/base.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ErikHaag/Opus-Magnum-Assets/bases/base.css">
     <link rel="stylesheet" href="main.css">
@@ -48,7 +52,7 @@
                     <use href="#triplex_r_bond" />
                 </g>
                 <g id="calcic_bond">
-                    <path d="M 0 2.5 C 10 2.5 14 7.5 24 7.5 M 0 7.5 C 10 7.5 14 2.5 24 2.5" fill="none" stroke="var(--calcic-bond)" stroke-width="3" /> 
+                    <path d="M 0 2.5 C 10 2.5 14 7.5 24 7.5 M 0 7.5 C 10 7.5 14 2.5 24 2.5" fill="none" stroke="var(--calcic-bond)" stroke-width="3" />
                 </g>
                 <g id="ethereal_bond">
                     <path d="M 0 0 V 10 M 24 0 V 10" fill="none" stroke="var(--ethereal-bond)" stroke-opacity="0.7" stroke-width="3" />
@@ -64,7 +68,9 @@
             <path d="M -10 -20 v 40 m 0 -20 h 20 m 0 -20 v 40 M -10 -10 h 12 M -10 10 h 12" fill="none" stroke="#0a1" stroke-width="3" />
             <circle r="40" fill="none" stroke="#ddd" stroke-width="3" />
             <g id="atoms"></g>
+            <g id="ghostAtoms"></g>
             <g id="bonds"></g>
+            <g id="ghostBonds"></g>
         </g>
     </svg>
     <div class="row">
@@ -81,6 +87,7 @@
         <fieldset>
             <legend>Bonds</legend>
             <textarea id="bondInput" spellcheck="false" placeholder="normal -1 1 0 0&#x000A;triplex ogr 0 0 1 -1" rows="10"></textarea>
+            <p class="introvert" id="bondError"></p>
         </fieldset>
         <fieldset>
             <legend>Buttons</legend>
@@ -120,11 +127,13 @@
     </div>
 </body>
 
+<script src="errorDisplayer.js"></script>
 <script src="hexIndex.js"></script>
 <script src="atom.js"></script>
 <script src="bond.js"></script>
 <script src="main.js"></script>
 <script src="atomList.js"></script>
 <script src="files.js"></script>
+<!-- <script src="moleculeIndentificationString.js"></script> -->
 
 </html>

@@ -1,12 +1,16 @@
 class Atom {
+    /** @type {Map<string, string[]>} */
     static atomTypes = new Map();
 
-    constructor(atomType, q, r) {
+    constructor(ghost = false) {
         this.elem = document.createElementNS("http://www.w3.org/2000/svg", "use");
-        Elements.atomContainer.appendChild(this.elem);
-        this.setAtomType(atomType);
-        this.setPosition(q, r);
+        Elements[ghost ? "ghostAtomContainer" : "atomContainer"].appendChild(this.elem);
+        this.setAtomType("");
+        this.setPosition(0n, 0n);
         this.elem.classList.add("glide");
+        if (ghost) {
+            this.elem.classList.add("ghost");
+        }
     }
 
     setAtomType(atomType) {
@@ -30,5 +34,15 @@ class Atom {
 
     remove() {
         this.elem.remove();
+    }
+
+    toString() {
+        let [name, namespace] = this.atomType.split("__");
+        let inferred = typeof(inferNamespace(name)[0]) == "string";
+        if (inferred) {
+            return `${name.replaceAll("_", " ")} ${this.pos}`;
+        }
+        return `${namespace}:${name.replaceAll("_", " ")} ${this.pos}`;
+
     }
 }
