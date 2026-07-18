@@ -435,6 +435,7 @@ function displayUpdate() {
     Elements.camera.setAttribute("transform", `translate(250, 250) scale(${scale}) translate(${-centerX}, ${-centerY})`);
 
     updateUI();
+    clearLabel();
     try {
         startMIS();
     } catch (e) {
@@ -762,9 +763,7 @@ function getSetStateString() {
 
 function updateLabel() {
     let data = MISGenerator.bestScore;
-    for (let e of Array.from(Elements.misOutput.children)) {
-        e.remove();
-    }
+    clearLabel();
     let rightEdge = 0;
     for (let i = 0; i < data.length; i++) {
         let element;
@@ -780,7 +779,7 @@ function updateLabel() {
             element.setAttribute("href", `#OMA_S_${data[i].atomType}`);
             Elements.misOutput.appendChild(element);
             let boundingBox = element.getBBox();
-            element.setAttribute("transform", `translate(${rightEdge}, 0) scale(0.5) translate(${1.5 - boundingBox.x},10)`)
+            element.setAttribute("transform", `translate(${rightEdge}, 30) scale(0.5) translate(${1.5 - boundingBox.x},${-(boundingBox.y + boundingBox.height)})`)
             rightEdge += boundingBox.width * 0.5 + 4;
         } else if (data[i].type == "bond") {
             element = document.createElementNS("http://www.w3.org/2000/svg", "use");
@@ -792,5 +791,11 @@ function updateLabel() {
         } else {
             continue;
         }
+    }
+}
+
+function clearLabel() {
+    for (let e of Array.from(Elements.misOutput.children)) {
+        e.remove();
     }
 }
