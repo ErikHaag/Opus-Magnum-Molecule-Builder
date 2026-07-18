@@ -751,7 +751,6 @@ function startNameGenerator() {
         Globals.misWorker = null;
         Globals.misWorker = new Worker("moleculeIdentificationString.js");
         Globals.misWorker.onmessage = (m) => {
-            console.log("Main: message recieved");
             if (m.data instanceof Array) {
                 updateLabel(m.data);
             }
@@ -797,7 +796,6 @@ function updateLabel(data) {
     if (width != 0) {
         Elements.misOutput.setAttribute("transform", `scale(${Math.min(490 / width, 1)})`);
     }
-    console.log(width);
 }
 
 function clearLabel() {

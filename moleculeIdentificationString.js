@@ -19,7 +19,7 @@ let MISGenerator = {
             };
         });
         if (repeatAtomIndex != -1) {
-            this.repeatOffet = this.atoms.splice(repeatOffet, 1)[0].pos;
+            this.repeatOffet = this.atoms.splice(repeatAtomIndex, 1)[0].pos;
         } else {
             this.repeatOffet = new HexIndex(0n, 0n);
         }
@@ -484,7 +484,6 @@ let MISGenerator = {
 };
 
 onmessage = async (m) => {
-    console.log("Worker: request recieved.");
     HexIndex = (await import("./hexIndex.js")).HexIndex;
     MISGenerator.restart(...(m.data));
     MISGenerator.step();
