@@ -194,9 +194,6 @@ function initialize() {
     Elements.exportSVGButton.addEventListener("click", () => exportImageSVG());
 
     window.setInterval(displayUpdate, 1000);
-    setState([{namespace: 'opus_magnum', atomType: 'gold', pos: new HexIndex(1n, 0n)}, {namespace: 'opus_magnum', atomType: 'quintessence', pos: new HexIndex(0n, 0n)}, {namespace: 'opus_magnum', atomType: 'fire', pos: new HexIndex(1n, 1n)}], [{bondType: 'triplex_o', start: new HexIndex(0n, 0n), end: new HexIndex(1n, 0n)},{bondType: 'normal', start: new HexIndex(1n, 0n), end: new HexIndex(1n, 1n)}]);
-    atomInputUpdate();
-    bondInputUpdate();
 }
 
 function atomInputUpdate(userUpdate = false) {
