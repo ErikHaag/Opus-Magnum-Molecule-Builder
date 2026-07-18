@@ -24,7 +24,7 @@ let MISGenerator = {
             this.repeatOffet = new HexIndex(0n, 0n);
         }
         // remove illegal bonds
-        this.bonds = this.bonds = bonds.map((b) => {
+        this.bonds = bonds.map((b) => {
             return {
                 bondType: b.bondType,
                 start: new HexIndex(b.start.q, b.start.r),
@@ -214,8 +214,22 @@ let MISGenerator = {
 
             this.substate++;
             if (this.nameTree.length == this.atoms.length) {
-                // valid tree
-                this.state = 3;
+                let bondsNoted = new Set();
+                for (let i = 0; i < this.nameTree.length; i++) {
+                    bondsNoted.add(this.nameTree[i].bondIndex);
+                    for (let j = 0; j < 5; j++) {
+                        // hey wait a minute!
+                        const connectionString = this.nameTree[i].connections[j];
+                        if (connectionString.startsWith("bond:")) {
+                            bondsNoted.add(Number.parseInt(connectionString.substring(5,connectionString.indexOf(","))));
+                        }
+                    }
+                }
+                bondsNoted.delete(-1);
+                if (bondsNoted.size == this.bonds.length) {
+                    // valid tree
+                    this.state = 3;
+                }
             }
         } else if (this.state == 3) {
             // name generation
