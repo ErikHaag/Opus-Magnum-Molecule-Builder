@@ -24,6 +24,15 @@ class HexIndex {
         return 0;
     }
 
+    static offsets = [
+        new HexIndex(0n, -1n),
+        new HexIndex(1n, -1n),
+        new HexIndex(1n, 0n),
+        new HexIndex(0n, 1n),
+        new HexIndex(-1n, 1n),
+        new HexIndex(-1n, 0n),
+    ]
+
     copy() {
         return new HexIndex(this.q, this.r);
     }

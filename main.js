@@ -7,6 +7,7 @@ class Elements {
         this.ghostAtomContainer = document.getElementById("ghostAtoms");
         this.bondContainer = document.getElementById("bonds");
         this.ghostBondContainer = document.getElementById("ghostBonds");
+        this.misOutput = document.getElementById("misOutput");
 
         this.atomInput = document.getElementById("atomInput");
         this.atomError = new ErrorDisplayer(document.getElementById("atomError"));
@@ -40,6 +41,7 @@ class Elements {
     static ghostAtomContainer;
     static bondContainer;
     static ghostBondContainer;
+    static misOutput;
 
     static atomInput;
     static atomError;
@@ -142,14 +144,35 @@ function initialize() {
                 }
             }
         }
+        {
+            for (let symbol of Array.from(symbols.children)) {
+                atomSymbols.appendChild(symbol);
+                // remove outline
+                if (symbol.classList.contains("outline")) {
+                    let elements = symbol.childElementCount >> 1;
+                    for (let i = 0; i < elements; i++) {
+                        symbol.children[elements].remove();
+                    }
+                    symbol.classList.remove("outline");
+                }
+                for (let component of symbol.children) {
+                    let fill = component.getAttribute("fill");
+                    if (fill != "none") {
+                        component.setAttribute("fill", "#000000")
+                    }
+                    let stroke = component.getAttribute("stroke");
+                    if (stroke != "none") {
+                        component.setAttribute("stroke", "#000000");
+                    }
+                }
+            }
+        }
     }
     ).then(() => {
         symbols.remove();
         bases.remove();
-        atomSymbols.remove();
         console.log(Elements.atomCollage.children.length + " atoms loaded.");
-    })
-
+    });
 
     Elements.atomInput.addEventListener("focusout", () => atomInputUpdate(true));
     Elements.bondInput.addEventListener("focusout", () => bondInputUpdate(true));
@@ -169,7 +192,11 @@ function initialize() {
     Elements.saveButton.addEventListener("click", () => saveFile());
     Elements.exportPNGButton.addEventListener("click", () => exportImagePNG());
     Elements.exportSVGButton.addEventListener("click", () => exportImageSVG());
+
     window.setInterval(displayUpdate, 1000);
+    setState([{namespace: 'opus_magnum', atomType: 'gold', pos: new HexIndex(1n, 0n)}, {namespace: 'opus_magnum', atomType: 'quintessence', pos: new HexIndex(0n, 0n)}, {namespace: 'opus_magnum', atomType: 'fire', pos: new HexIndex(1n, 1n)}], [{bondType: 'triplex_o', start: new HexIndex(0n, 0n), end: new HexIndex(1n, 0n)},{bondType: 'normal', start: new HexIndex(1n, 0n), end: new HexIndex(1n, 1n)}]);
+    atomInputUpdate();
+    bondInputUpdate();
 }
 
 function atomInputUpdate(userUpdate = false) {
@@ -411,12 +438,19 @@ function displayUpdate() {
     Elements.camera.setAttribute("transform", `translate(250, 250) scale(${scale}) translate(${-centerX}, ${-centerY})`);
 
     updateUI();
+    try {
+        startMIS();
+    } catch (e) {
+        if (!(e instanceof ReferenceError)) {
+            throw e;
+        }
+    }
 }
 
 function updateUI() {
     Elements.atomError.update();
     Elements.bondError.update();
-    
+
     let errored = Elements.atomError.hasError || Elements.bondError.hasError;
     Elements.exportPNGButton.disabled = errored;
     Elements.exportSVGButton.disabled = errored;
@@ -428,7 +462,7 @@ function polymerValidation() {
         Elements.atomError.setError("There must be an atom in the center of the board.");
         return;
     }
-    
+
     Globals.repeatAtomIndex = Globals.atomList.findIndex((a) => a.atomType == "repeat__opus_magnum");
     if (Globals.repeatAtomIndex == -1) {
         return;
@@ -443,7 +477,7 @@ function polymerValidation() {
         Elements.atomError.setError("The repeat atom may not lie on the center of the board.");
         return;
     }
-    
+
     Globals.ghosts = true;
     // test for overlapping atoms
     for (let i = 0; i < Globals.atomList.length - 1; i++) {
@@ -456,7 +490,7 @@ function polymerValidation() {
                 continue;
             }
             const atomJ = Globals.atomList[j];
-            let info = polymerCollision(atomI.pos.q, atomI.pos.r, atomJ.pos.q, atomJ.pos.r);
+            let info = polymerCollision(atomI.pos, atomJ.pos);
             if (info.collides) {
                 Elements.atomError.setError(`The atoms \"${atomI}\" and \"${atomJ}\" will overlap in the polymer.`, j);
                 return;
@@ -468,9 +502,9 @@ function polymerValidation() {
         const bondI = Globals.bondList[i];
         for (let j = i + 1; j < Globals.bondList.length; j++) {
             const bondJ = Globals.bondList[j];
-            let startInfo = polymerCollision(bondI.start.q, bondI.start.r, bondJ.start.q, bondJ.start.r);
+            let startInfo = polymerCollision(bondI.start, bondJ.start);
             if (startInfo.collides) {
-                let endInfo = polymerCollision(bondI.end.q, bondI.end.r, bondJ.end.q, bondJ.end.r);
+                let endInfo = polymerCollision(bondI.end, bondJ.end);
                 if (endInfo.collides && startInfo.deltaMonomer == endInfo.deltaMonomer) {
                     Elements.bondError.setError(`The bonds \"${bondI}\" and \"${bondJ}\" will overlap in this polymer`, j);
                     return;
@@ -494,7 +528,7 @@ function polymerValidation() {
                 if (j == Globals.repeatAtomIndex) {
                     continue;
                 }
-                if ((polymerCollision(bond.start.q, bond.start.r, Globals.atomList[j].pos.q, Globals.atomList[j].pos.r)).collides || (polymerCollision(bond.end.q, bond.end.r, Globals.atomList[j].pos.q, Globals.atomList[j].pos.r)).collides) {
+                if ((polymerCollision(bond.start, Globals.atomList[j].pos)).collides || (polymerCollision(bond.end, Globals.atomList[j].pos)).collides) {
                     Elements.bondError.setError("The bond \"" + bond + "\" connect atoms in later monomers.", i);
                     return;
                 }
@@ -504,23 +538,23 @@ function polymerValidation() {
 
 }
 
-function polymerCollision(q1, r1, q2, r2) {
-    if (Globals.repeatOffset.q == 0n && Globals.repeatOffset.r == 0n) {
-        return { collides: (q1 == q2) && (r1 == r2), deltaMonomer: 0n }
+function polymerCollision(h1, h2, rO = Globals.repeatOffset) {
+    if (rO.q == 0n && rO.r == 0n) {
+        return { collides: (h1.q == h2.q) && (h1.r == h2.r), deltaMonomer: 0n }
     }
-    const qDiff = q2 - q1;
-    const rDiff = r2 - r1;
-    if (Globals.repeatOffset.q == 0n) {
-        if (qDiff == 0n && rDiff % Globals.repeatOffset.r == 0n) {
-            return { collides: true, deltaMonomer: rDiff / Globals.repeatOffset.r };
+    const qDiff = h2.q - h1.q;
+    const rDiff = h2.r - h1.r;
+    if (rO.q == 0n) {
+        if (qDiff == 0n && rDiff % rO.r == 0n) {
+            return { collides: true, deltaMonomer: rDiff / rO.r };
         }
-    } else if (Globals.repeatOffset.r == 0n) {
-        if (rDiff == 0n && qDiff % Globals.repeatOffset.q == 0n) {
-            return { collides: true, deltaMonomer: qDiff / Globals.repeatOffset.q };
+    } else if (rO.r == 0n) {
+        if (rDiff == 0n && qDiff % rO.q == 0n) {
+            return { collides: true, deltaMonomer: qDiff / rO.q };
         }
-    } else if (qDiff % Globals.repeatOffset.q == 0n) {
-        if (r1 + (qDiff / Globals.repeatOffset.q) * Globals.repeatOffset.r == r2) {
-            return { collides: true, deltaMonomer: qDiff / Globals.repeatOffset.q };
+    } else if (qDiff % rO.q == 0n) {
+        if (h1.r + (qDiff / rO.q) * rO.r == h2.r) {
+            return { collides: true, deltaMonomer: qDiff / rO.q };
         }
     }
     return { collides: false, deltaMonomer: 0n };
@@ -541,7 +575,7 @@ function* getRepeatAtomPositions() {
                 if (i == Globals.repeatAtomIndex) {
                     continue;
                 }
-                if ((polymerCollision(bond.start.q, bond.start.r, Globals.atomList[i].pos.q, Globals.atomList[i].pos.r)).collides) {
+                if ((polymerCollision(bond.start, Globals.atomList[i].pos)).collides) {
                     yield bond.start.copy();
                     continue o;
                 }
@@ -551,7 +585,7 @@ function* getRepeatAtomPositions() {
                 if (i == Globals.repeatAtomIndex) {
                     continue;
                 }
-                if ((polymerCollision(bond.end.q, bond.end.r, Globals.atomList[i].pos.q, Globals.atomList[i].pos.r)).collides) {
+                if ((polymerCollision(bond.end, Globals.atomList[i].pos)).collides) {
                     yield bond.end.copy();
                     continue o;
                 }
@@ -721,5 +755,45 @@ function setState(atoms, bonds) {
     }
     if (bonds != null) {
         Elements.bondInput.value = bonds.map((b) => `${b.bondType} ${b.start.q} ${b.start.r} ${b.end.q} ${b.end.r}`).join("\n");
+    }
+}
+
+function getSetStateString() {
+    let s = getState();
+    return `setState([${s.atoms.map((a) => `{namespace: '${a.namespace}', atomType: '${a.atomType}', pos: new HexIndex(${a.pos.q}n, ${a.pos.r}n)}`).join(", ")}], [${s.bonds.map((b) => `{bondType: '${b.bondType}', start: new HexIndex(${b.start.q}n, ${b.start.r}n), end: new HexIndex(${b.end.q}n, ${b.end.r}n)}`)}]);`
+}
+
+function updateLabel() {
+    let data = MISGenerator.bestScore;
+    for (let e of Array.from(Elements.misOutput.children)) {
+        e.remove();
+    }
+    let rightEdge = 0;
+    for (let i = 0; i < data.length; i++) {
+        let element;
+        if (typeof (data[i]) == "string") {
+            element = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            Elements.misOutput.appendChild(element);
+            element.textContent = data[i];
+            element.setAttribute("x", rightEdge);
+            element.setAttribute("y", 30);
+            rightEdge += element.getBBox().width;
+        } else if (data[i].type == "atom") {
+            element = document.createElementNS("http://www.w3.org/2000/svg", "use");
+            element.setAttribute("href", `#OMA_S_${data[i].atomType}`);
+            Elements.misOutput.appendChild(element);
+            let boundingBox = element.getBBox();
+            element.setAttribute("transform", `translate(${rightEdge}, 0) scale(0.5) translate(${1.5 - boundingBox.x},10)`)
+            rightEdge += boundingBox.width * 0.5 + 4;
+        } else if (data[i].type == "bond") {
+            element = document.createElementNS("http://www.w3.org/2000/svg", "use");
+            element.setAttribute("href", `#${data[i].bondType}_bond_drawn`);
+            Elements.misOutput.appendChild(element);
+            let boundingBox = element.getBBox();
+            element.setAttribute("transform", `translate(${2 + rightEdge - boundingBox.x},20) scale(0.7) translate(0, -5)`)
+            rightEdge += boundingBox.width * 0.7 + 5;
+        } else {
+            continue;
+        }
     }
 }

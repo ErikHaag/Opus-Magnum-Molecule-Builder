@@ -85,3 +85,8 @@
         grid-area: 3 / 4 / 3 / 6;
     }
 }
+
+#misOutput text {
+    font-family: monospace;
+    font-size: 20px;
+}

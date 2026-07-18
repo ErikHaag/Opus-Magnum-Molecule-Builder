@@ -4,10 +4,10 @@
 <head>
     <meta charset='utf-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1'>
-    <title>OMMMB</title>
+    <title>OMMB</title>
     <link rel="preconnect" href="https://cdn.jsdelivr.net/gh/ErikHaag/Opus-Magnum-Assets/symbols/atomSymbolsExpand.js">
     <link rel="preconnect" href="https://cdn.jsdelivr.net/gh/ErikHaag/Opus-Magnum-Assets/bases/atomBasesExpand.js">
-    <link rel="preconnect" href="https://cdn.jsdelivr.net/gh/ErikHaag/Opus-Magnum-Assets/combining/atomMerge.js">`
+    <link rel="preconnect" href="https://cdn.jsdelivr.net/gh/ErikHaag/Opus-Magnum-Assets/combining/atomMerge.js">
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ErikHaag/Opus-Magnum-Assets/symbols/base.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ErikHaag/Opus-Magnum-Assets/bases/base.css">
@@ -15,10 +15,39 @@
 </head>
 
 <body>
-    <h2>Opus Magnum Modded Molecule Builder</h2>
+    <h2>Opus Magnum Molecule Builder + Mods</h2>
     <svg style="width: 500px; height: 500px">
         <defs>
             <g id="atomSymbols"></g>
+            <g id="drawnBonds">
+                <g id="triplex_o_bond_drawn">
+                    <path d="M 0 0 C 2.2 0 6.1 1.9 10.2 4.1 M 13.8 5.9 C 17.9 8.1 21.8 10 24 10" fill="none" stroke="#000000" stroke-width="2.14" />
+                </g>
+                <g id="triplex_g_bond_drawn">
+                    <path d="M 0 5 H 10 M 14 5 H 24" fill="none" stroke="#000000" stroke-width="2.14" />
+                </g>
+                <g id="triplex_r_bond_drawn">
+                    <path d="M 0 10 C 5 10 19 0 24 0" fill="none" stroke="#000000" stroke-width="2.14" />
+                </g>
+                <g id="triplex_og_bond_drawn">
+                    <path d="M 0 0 C 1.6 0 4.2 1.1 7.1 2.5 M 16.9 7.5 C 19.8 8.9 22.4 10 24 10 M 0 5 H 10 M 14 5 H 24" fill="none" stroke="#000000" stroke-width="2.14" />
+                </g>
+                <g id="triplex_or_bond_drawn">
+                    <path d="M 0 0 C 1.6 0 4.2 1.1 7.1 2.5 M 16.9 7.5 C 19.8 8.9 22.4 10 24 10 M 0 10 C 5 10 19 0 24 0" fill="none" stroke="#000000" stroke-width="2.14" />
+                </g>
+                <g id="triplex_gr_bond_drawn">
+                    <path d="M 0 5 H 7 M 17 5 H 24 M 0 10 C 5 10 19 0 24 0" fill="none" stroke="#000000" stroke-width="2.14" />
+                </g>
+                <g id="triplex_ogr_bond_drawn">
+                    <path d="M 0 0 C 1.6 0 4.2 1.1 7.1 2.5 M 16.9 7.5 C 19.8 8.9 22.4 10 24 10 M 0 5 H 7 M 17 5 H 24 M 0 10 C 5 10 19 0 24 0" fill="none" stroke="#000000" stroke-width="2.14" />
+                </g>
+                <g id="calcic_bond_drawn">
+                    <path d="M 0 2.5 C 10 2.5 14 7.5 24 7.5 M 0 7.5 C 10 7.5 14 2.5 24 2.5" fill="none" stroke="#000000" stroke-width="2.14" />
+                </g>
+                <g id="ethereal_bond_drawn">
+                    <path d="M 0 0 C 8 5 16 5 24 0 M 0 10 C 8 5 16 5 24 10" fill="none" stroke="#000000" stroke-width="2.14" />
+                </g>
+            </g>
             <g id="bondSymbols">
                 <g id="normal_bond">
                     <line x1="0" y1="0" x2="0" y2="10" stroke="var(--standard-bond)" stroke-width="3" />
@@ -34,13 +63,13 @@
                 <g id="triplex_r_bond">
                     <path d="M 0 10 C 5 10 19 0 24 0" fill="none" stroke="var(--triplex-bond-red)" stroke-width="3" />
                 </g>
-                <g id="triplex_or_bond">
-                    <use href="#triplex_o_bond" />
-                    <use href="#triplex_r_bond" />
-                </g>
                 <g id="triplex_og_bond">
                     <use href="#triplex_o_bond" />
                     <use href="#triplex_g_bond" />
+                </g>
+                <g id="triplex_or_bond">
+                    <use href="#triplex_o_bond" />
+                    <use href="#triplex_r_bond" />
                 </g>
                 <g id="triplex_gr_bond">
                     <use href="#triplex_g_bond" />
@@ -72,6 +101,7 @@
             <g id="bonds"></g>
             <g id="ghostBonds"></g>
         </g>
+        <g id="misOutput"></g>
     </svg>
     <div class="row">
         <fieldset>
@@ -134,6 +164,6 @@
 <script src="main.js"></script>
 <script src="atomList.js"></script>
 <script src="files.js"></script>
-<!-- <script src="moleculeIndentificationString.js"></script> -->
+<script src="moleculeIdentificationString.js"></script>
 
 </html>
