@@ -1,3 +1,5 @@
+let HexIndex;
+
 class Elements {
     static init() {
         this.bondCollage = document.getElementById("bondCollage");
@@ -24,6 +26,7 @@ class Elements {
         this.saveLink = document.getElementById("downloadText");
         this.exportPNGButton = document.getElementById("exportPNG");
         this.exportSVGButton = document.getElementById("exportSVG");
+        this.generateNameButton = document.getElementById("generateName");
         this.exportLink = document.getElementById("downloadImage");
         this.loadButton = document.getElementById("load");
         this.fileInput = document.getElementById("loadInput");
@@ -58,6 +61,7 @@ class Elements {
     static saveLink;
     static exportPNGButton;
     static exportSVGButton;
+    static generateNameButton;
     static exportLink;
     static loadButton;
     static fileInput;
@@ -76,7 +80,7 @@ class Globals {
     static modified = false;
     static ghosts = false;
     static repeatAtomIndex = -1;
-    static repeatOffset = new HexIndex(0n, 0n);
+    static repeatOffset;
 
     static atomList = [];
     static ghostAtomList = [];
@@ -84,12 +88,16 @@ class Globals {
     static ghostBondList = [];
 
     static canvasBlobURL;
+    static misWorker = null;
 }
 
 document.addEventListener("DOMContentLoaded", initialize);
 
-function initialize() {
+async function initialize() {
     Elements.init();
+    HexIndex = (await import("./hexIndex.js")).HexIndex;
+    Globals.repeatOffset = new HexIndex(0n, 0n);
+
     let atomSymbols = document.getElementById("atomSymbols");
     let symbols = document.createElementNS("http://www.w3.org/2000/svg", "g");
     let bases = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -190,9 +198,12 @@ function initialize() {
 
     Elements.loadButton.addEventListener("click", () => loadFile());
     Elements.saveButton.addEventListener("click", () => saveFile());
+    Elements.generateNameButton.addEventListener("click", () => startNameGenerator())
     Elements.exportPNGButton.addEventListener("click", () => exportImagePNG());
     Elements.exportSVGButton.addEventListener("click", () => exportImageSVG());
 
+    Globals.modified = true;
+    displayUpdate();
     window.setInterval(displayUpdate, 1000);
 }
 
@@ -436,13 +447,6 @@ function displayUpdate() {
 
     updateUI();
     clearLabel();
-    try {
-        startMIS();
-    } catch (e) {
-        if (!(e instanceof ReferenceError)) {
-            throw e;
-        }
-    }
 }
 
 function updateUI() {
@@ -450,6 +454,7 @@ function updateUI() {
     Elements.bondError.update();
 
     let errored = Elements.atomError.hasError || Elements.bondError.hasError;
+    Elements.generateNameButton.disabled = !!(window.Worker) && errored;
     Elements.exportPNGButton.disabled = errored;
     Elements.exportSVGButton.disabled = errored;
 }
@@ -488,7 +493,7 @@ function polymerValidation() {
                 continue;
             }
             const atomJ = Globals.atomList[j];
-            let info = polymerCollision(atomI.pos, atomJ.pos);
+            let info = HexIndex.polymerCollision(atomI.pos, atomJ.pos, Globals.repeatOffset);
             if (info.collides) {
                 Elements.atomError.setError(`The atoms \"${atomI}\" and \"${atomJ}\" will overlap in the polymer.`, j);
                 return;
@@ -500,9 +505,9 @@ function polymerValidation() {
         const bondI = Globals.bondList[i];
         for (let j = i + 1; j < Globals.bondList.length; j++) {
             const bondJ = Globals.bondList[j];
-            let startInfo = polymerCollision(bondI.start, bondJ.start);
+            let startInfo = HexIndex.polymerCollision(bondI.start, bondJ.start, Globals.repeatOffset);
             if (startInfo.collides) {
-                let endInfo = polymerCollision(bondI.end, bondJ.end);
+                let endInfo = HexIndex.polymerCollision(bondI.end, bondJ.end, Globals.repeatOffset);
                 if (endInfo.collides && startInfo.deltaMonomer == endInfo.deltaMonomer) {
                     Elements.bondError.setError(`The bonds \"${bondI}\" and \"${bondJ}\" will overlap in this polymer`, j);
                     return;
@@ -526,7 +531,7 @@ function polymerValidation() {
                 if (j == Globals.repeatAtomIndex) {
                     continue;
                 }
-                if ((polymerCollision(bond.start, Globals.atomList[j].pos)).collides || (polymerCollision(bond.end, Globals.atomList[j].pos)).collides) {
+                if ((HexIndex.polymerCollision(bond.start, Globals.atomList[j].pos, Globals.repeatOffset)).collides || (HexIndex.polymerCollision(bond.end, Globals.atomList[j].pos, Globals.repeatOffset)).collides) {
                     Elements.bondError.setError("The bond \"" + bond + "\" connect atoms in later monomers.", i);
                     return;
                 }
@@ -534,28 +539,6 @@ function polymerValidation() {
         }
     }
 
-}
-
-function polymerCollision(h1, h2, rO = Globals.repeatOffset) {
-    if (rO.q == 0n && rO.r == 0n) {
-        return { collides: (h1.q == h2.q) && (h1.r == h2.r), deltaMonomer: 0n }
-    }
-    const qDiff = h2.q - h1.q;
-    const rDiff = h2.r - h1.r;
-    if (rO.q == 0n) {
-        if (qDiff == 0n && rDiff % rO.r == 0n) {
-            return { collides: true, deltaMonomer: rDiff / rO.r };
-        }
-    } else if (rO.r == 0n) {
-        if (rDiff == 0n && qDiff % rO.q == 0n) {
-            return { collides: true, deltaMonomer: qDiff / rO.q };
-        }
-    } else if (qDiff % rO.q == 0n) {
-        if (h1.r + (qDiff / rO.q) * rO.r == h2.r) {
-            return { collides: true, deltaMonomer: qDiff / rO.q };
-        }
-    }
-    return { collides: false, deltaMonomer: 0n };
 }
 
 function* getRepeatAtomPositions() {
@@ -573,7 +556,7 @@ function* getRepeatAtomPositions() {
                 if (i == Globals.repeatAtomIndex) {
                     continue;
                 }
-                if ((polymerCollision(bond.start, Globals.atomList[i].pos)).collides) {
+                if ((HexIndex.polymerCollision(bond.start, Globals.atomList[i].pos, Globals.repeatOffset)).collides) {
                     yield bond.start.copy();
                     continue o;
                 }
@@ -583,7 +566,7 @@ function* getRepeatAtomPositions() {
                 if (i == Globals.repeatAtomIndex) {
                     continue;
                 }
-                if ((polymerCollision(bond.end, Globals.atomList[i].pos)).collides) {
+                if ((HexIndex.polymerCollision(bond.end, Globals.atomList[i].pos, Globals.repeatOffset)).collides) {
                     yield bond.end.copy();
                     continue o;
                 }
@@ -761,8 +744,26 @@ function getSetStateString() {
     return `setState([${s.atoms.map((a) => `{namespace: '${a.namespace}', atomType: '${a.atomType}', pos: new HexIndex(${a.pos.q}n, ${a.pos.r}n)}`).join(", ")}], [${s.bonds.map((b) => `{bondType: '${b.bondType}', start: new HexIndex(${b.start.q}n, ${b.start.r}n), end: new HexIndex(${b.end.q}n, ${b.end.r}n)}`)}]);`
 }
 
-function updateLabel() {
-    let data = MISGenerator.bestScore;
+
+function startNameGenerator() {
+    if (window.Worker) {
+        Globals.misWorker?.terminate();
+        Globals.misWorker = null;
+        Globals.misWorker = new Worker("moleculeIdentificationString.js");
+        Globals.misWorker.onmessage = (m) => {
+            console.log("Main: message recieved");
+            if (m.data instanceof Array) {
+                updateLabel(m.data);
+            }
+        };
+        let s = getState();
+        Globals.misWorker.postMessage([s.atoms, s.bonds, Globals.repeatAtomIndex]);
+    } else {
+        console.error("This browser doesn't support Web Workers!");
+    }
+}
+
+function updateLabel(data) {
     clearLabel();
     let rightEdge = 0;
     for (let i = 0; i < data.length; i++) {
@@ -792,6 +793,11 @@ function updateLabel() {
             continue;
         }
     }
+    let width = Elements.misOutput.getBBox().width;
+    if (width != 0) {
+        Elements.misOutput.setAttribute("transform", `scale(${Math.min(490 / width, 1)})`);
+    }
+    console.log(width);
 }
 
 function clearLabel() {

@@ -2,7 +2,7 @@ function abs(v) {
     return v >= 0n ? v : -v;
 }
 
-class HexIndex {
+export class HexIndex {
     constructor(q, r) {
         this.q = q;
         this.r = r;
@@ -22,6 +22,28 @@ class HexIndex {
             return diff > 0n ? 1 : -1;
         }
         return 0;
+    }
+
+    static polymerCollision(h1, h2, rO) {
+        if (rO.q == 0n && rO.r == 0n) {
+            return { collides: (h1.q == h2.q) && (h1.r == h2.r), deltaMonomer: 0n }
+        }
+        const qDiff = h2.q - h1.q;
+        const rDiff = h2.r - h1.r;
+        if (rO.q == 0n) {
+            if (qDiff == 0n && rDiff % rO.r == 0n) {
+                return { collides: true, deltaMonomer: rDiff / rO.r };
+            }
+        } else if (rO.r == 0n) {
+            if (rDiff == 0n && qDiff % rO.q == 0n) {
+                return { collides: true, deltaMonomer: qDiff / rO.q };
+            }
+        } else if (qDiff % rO.q == 0n) {
+            if (h1.r + (qDiff / rO.q) * rO.r == h2.r) {
+                return { collides: true, deltaMonomer: qDiff / rO.q };
+            }
+        }
+        return { collides: false, deltaMonomer: 0n };
     }
 
     static offsets = [
@@ -72,7 +94,7 @@ class HexIndex {
     }
 
     toString() {
-        return `${this.q} ${this.r}`;   
+        return `${this.q} ${this.r}`;
     }
 
     toXY() {

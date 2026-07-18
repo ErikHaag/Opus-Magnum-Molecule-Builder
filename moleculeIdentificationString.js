@@ -1,34 +1,42 @@
+let HexIndex;
+
 let MISGenerator = {
     atoms: [],
     bonds: [],
     indexedBonds: [],
-    repeatOffet: new HexIndex(0n, 0n),
+    repeatOffet: null,
     state: 0,
     substate: 0,
     treeGen: null,
     tree: null,
     nameTree: null,
     bestScore: null,
-    restart: function () {
-        let { atoms, bonds } = getState();
+    restart: function (atoms, bonds, repeatAtomIndex = -1) {
         this.atoms = atoms.map((a) => {
             return {
                 atomType: `${a.atomType}__${a.namespace}`,
-                pos: a.pos
+                pos: new HexIndex(a.pos.q, a.pos.r)
             };
-        })
-        if (Globals.ghosts) {
-            this.atoms.splice(Globals.repeatAtomIndex, 1);
+        });
+        if (repeatAtomIndex != -1) {
+            this.repeatOffet = this.atoms.splice(repeatOffet, 1)[0].pos;
+        } else {
+            this.repeatOffet = new HexIndex(0n, 0n);
         }
-        this.repeatOffet = Globals.repeatOffset.copy();
         // remove illegal bonds
-        this.bonds = bonds.filter(b => b.start.distance(b.end) == 1n);
+        this.bonds = this.bonds = bonds.map((b) => {
+            return {
+                bondType: b.bondType,
+                start: new HexIndex(b.start.q, b.start.r),
+                end: new HexIndex(b.end.q, b.end.r)
+            };
+        }).filter(b => b.start.distance(b.end) == 1n);
         this.indexedBonds = this.bonds.map((b) => {
             let start = undefined;
             let end = undefined;
             for (let i = 0; i < this.atoms.length; i++) {
                 if (start == undefined) {
-                    let data = polymerCollision(this.atoms[i].pos, b.start, this.repeatOffet);
+                    let data = HexIndex.polymerCollision(this.atoms[i].pos, b.start, this.repeatOffet);
                     if (data.collides) {
                         start = {
                             index: i,
@@ -40,7 +48,7 @@ let MISGenerator = {
                     break;
                 }
                 if (end == undefined) {
-                    let data = polymerCollision(this.atoms[i].pos, b.end, this.repeatOffet);
+                    let data = HexIndex.polymerCollision(this.atoms[i].pos, b.end, this.repeatOffet);
                     if (data.collides) {
                         end = {
                             index: i,
@@ -66,23 +74,19 @@ let MISGenerator = {
                 if (b.start.delta == 0n && b.end.delta == 0n) {
                     return false;
                 }
-                let S1 = polymerCollision(MISGenerator.atoms[b.start.index].pos, h1, MISGenerator.repeatOffet);
-                let E2 = polymerCollision(MISGenerator.atoms[b.end.index].pos, h2, MISGenerator.repeatOffet);
+                let S1 = HexIndex.polymerCollision(MISGenerator.atoms[b.start.index].pos, h1, MISGenerator.repeatOffet);
+                let E2 = HexIndex.polymerCollision(MISGenerator.atoms[b.end.index].pos, h2, MISGenerator.repeatOffet);
                 if (S1.collides && E2.collides && (S1.deltaMonomer < E2.deltaMonomer)) {
                     return true;
                 }
-                let S2 = polymerCollision(MISGenerator.atoms[b.start.index].pos, h2, MISGenerator.repeatOffet);
-                let E1 = polymerCollision(MISGenerator.atoms[b.end.index].pos, h1, MISGenerator.repeatOffet);
+                let S2 = HexIndex.polymerCollision(MISGenerator.atoms[b.start.index].pos, h2, MISGenerator.repeatOffet);
+                let E1 = HexIndex.polymerCollision(MISGenerator.atoms[b.end.index].pos, h1, MISGenerator.repeatOffet);
                 return S2.collides && E1.collides && (E1.deltaMonomer < S2.deltaMonomer);
             });
         }
 
 
         if (this.state == 0) {
-            if (Elements.atomError.hasError || Elements.bondError.hasError) {
-                this.state = -1;
-                return;
-            }
             // validate atoms and bonds are all connected
             if (this.indexedBonds.some((b) => b.start == undefined || b.end == undefined)) {
                 this.state = -1;
@@ -125,7 +129,7 @@ let MISGenerator = {
                 return;
             }
             if (this.bonds.length == 0) {
-                this.bestScore = [[{type: "atom", id: 0}]];
+                this.bestScore = [[{ type: "atom", id: 0 }]];
                 this.state = 4;
                 return;
             }
@@ -415,14 +419,14 @@ let MISGenerator = {
             }
         } else if (this.state == 4) {
             this.bestScore = this.bestScore[0].map((s) => {
-                if (typeof(s) == "string") {
+                if (typeof (s) == "string") {
                     return s;
                 }
                 if (s.type == "atom") {
-                    return {type: "atom", atomType: this.atoms[s.id].atomType};
+                    return { type: "atom", atomType: this.atoms[s.id].atomType };
                 }
                 if (s.type == "bond") {
-                    return {type: "bond", bondType: this.bonds[s.id].bondType};
+                    return { type: "bond", bondType: this.bonds[s.id].bondType };
                 }
                 if (s.type == "reference") {
                     if (s.delta == 0n) {
@@ -479,28 +483,15 @@ let MISGenerator = {
     }
 };
 
-let MISGeneratorClock;
-
-function startMIS() {
-    stopMIS();
-    MISGenerator.restart();
-    stepMIS();
-}
-
-function stepMIS() {
-    if (MISGenerator.state < 0) {
-        stopMIS();
-        if (MISGenerator.state == -2) {
-            updateLabel();
-        }
-        return;
-    }
+onmessage = async (m) => {
+    console.log("Worker: request recieved.");
+    HexIndex = (await import("./hexIndex.js")).HexIndex;
+    MISGenerator.restart(...(m.data));
     MISGenerator.step();
-    MISGeneratorClock = setTimeout(stepMIS, 10);
-}
-
-
-function stopMIS() {
-    clearTimeout(MISGeneratorClock);
-    MISGeneratorClock = null;
+    while (MISGenerator.state > 0) {
+        MISGenerator.step();
+    }
+    if (MISGenerator.state == -2) {
+        postMessage(MISGenerator.bestScore);
+    }
 }
