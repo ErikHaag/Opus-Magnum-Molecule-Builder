@@ -575,7 +575,7 @@ function* getRepeatAtomPositions() {
     }
 }
 
-function getAtomBoundingBox() {
+function getAtomBoundingBox(includeRepeats = false) {
     let xMin = Number.POSITIVE_INFINITY;
     let yMin = Number.POSITIVE_INFINITY;
     let xMax = Number.NEGATIVE_INFINITY;
@@ -593,6 +593,15 @@ function getAtomBoundingBox() {
             yMin = Math.min(yMin, y - 45);
             xMax = Math.max(xMax, x + 45);
             yMax = Math.max(yMax, y + 45);
+        }
+        if (includeRepeats) {
+            for (let h of getRepeatAtomPositions()) {
+                let [x, y] = h.toXY();
+                xMin = Math.min(xMin, x - 45);
+                yMin = Math.min(yMin, y - 45);
+                xMax = Math.max(xMax, x + 45);
+                yMax = Math.max(yMax, y + 45);
+            }
         }
     }
     return { xMin, yMin, xMax, yMax };

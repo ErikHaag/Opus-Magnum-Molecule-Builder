@@ -58,7 +58,7 @@ function exportImageSVG() {
         return;
     }
     let svgFrag = "<svg xmlns=\"http://www.w3.org/2000/svg\" "
-    let { xMin, yMin, xMax, yMax } = getAtomBoundingBox();
+    let { xMin, yMin, xMax, yMax } = getAtomBoundingBox(true);
     svgFrag += `viewBox="${xMin} ${yMin} ${xMax - xMin} ${yMax - yMin}" >\n<defs>`
     let atomsUsed = new Set();
     for (let atom of Globals.atomList) {
@@ -78,6 +78,9 @@ function exportImageSVG() {
     svgFrag += "\n</defs>";
     if (Globals.ghosts) {
         svgFrag += "\n<circle r=\"40\" fill=\"none\" stroke=\"#ddd\" stroke-width=\"3\" />"
+        let [x, y] = Globals.repeatOffset.toXY();
+        svgFrag += `\n<circle cx=\"${x}\" cy=\"${y}\" r=\"40\" fill=\"none\" stroke=\"#ddd\" stroke-width=\"3\" />`
+
     }
     for (let i = 0; i < Globals.atomList.length; i++) {
         if (Globals.ghosts && i == Globals.repeatAtomIndex) {
@@ -115,7 +118,7 @@ function exportImagePNG() {
     if (Elements.atomError.hasError || Elements.bondError.hasError) {
         return;
     }
-    let { xMin, yMin, xMax, yMax } = getAtomBoundingBox();
+    let { xMin, yMin, xMax, yMax } = getAtomBoundingBox(true);
     Elements.canvasSrc.setAttribute("viewBox", `0 0 ${xMax - xMin} ${yMax - yMin}`);
     Elements.canvasSrc.setAttribute("width", xMax - xMin);
     Elements.canvasSrc.innerHTML = "";
@@ -136,13 +139,21 @@ function exportImagePNG() {
     }
 
     if (Globals.ghosts) {
-        let circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        circle.setAttribute("r", "40");
-        circle.setAttribute("fill", "none");
-        circle.setAttribute("stroke", "#ddd");
-        circle.setAttribute("stroke-width", "3");
-        circle.setAttribute("transform", `translate(${-xMin}, ${-yMin})`);
-        Elements.canvasSrc.appendChild(circle);
+        let originCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        originCircle.setAttribute("r", "40");
+        originCircle.setAttribute("fill", "none");
+        originCircle.setAttribute("stroke", "#ddd");
+        originCircle.setAttribute("stroke-width", "3");
+        originCircle.setAttribute("transform", `translate(${-xMin}, ${-yMin})`);
+        Elements.canvasSrc.appendChild(originCircle);
+        let repeatCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        repeatCircle.setAttribute("r", "40");
+        repeatCircle.setAttribute("fill", "none");
+        repeatCircle.setAttribute("stroke", "#ddd");
+        repeatCircle.setAttribute("stroke-width", "3");
+        let [x, y] = Globals.repeatOffset.toXY();
+        repeatCircle.setAttribute("transform", `translate(${x - xMin}, ${y - yMin})`);
+        Elements.canvasSrc.appendChild(repeatCircle);
     }
 
     for (let i = 0; i < Globals.atomList.length; i++) {
