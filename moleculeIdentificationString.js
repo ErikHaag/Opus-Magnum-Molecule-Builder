@@ -498,13 +498,26 @@ let MISGenerator = {
 };
 
 onmessage = async (m) => {
-    HexIndex = (await import("./hexIndex.js")).HexIndex;
+    HexIndex ??= (await import("./hexIndex.js")).HexIndex;
     MISGenerator.restart(...(m.data));
     MISGenerator.step();
-    while (MISGenerator.state > 0) {
+    clearTimeout(timer);
+    timedStep();
+}
+
+function timedStep() {
+    let startTime = performance.now();
+    // execute in 1 second bursts
+    while (MISGenerator.state > 0 && (performance.now() - startTime) < 1000 ) {
         MISGenerator.step();
+    }
+    if (MISGenerator > 0) {
+        timer = setTimeout(timedStep, 10);
     }
     if (MISGenerator.state == -2) {
         postMessage(MISGenerator.bestScore);
     }
 }
+
+
+let timer;

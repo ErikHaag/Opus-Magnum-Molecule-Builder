@@ -756,14 +756,14 @@ function getSetStateString() {
 
 function startNameGenerator() {
     if (window.Worker) {
-        Globals.misWorker?.terminate();
-        Globals.misWorker = null;
-        Globals.misWorker = new Worker("moleculeIdentificationString.js");
-        Globals.misWorker.onmessage = (m) => {
-            if (m.data instanceof Array) {
-                updateLabel(m.data);
-            }
-        };
+        if (!Globals.misWorker) {
+            Globals.misWorker = new Worker("moleculeIdentificationString.js");
+            Globals.misWorker.onmessage = (m) => {
+                if (m.data instanceof Array) {
+                    updateLabel(m.data);
+                }
+            };
+        }
         let s = getState();
         Globals.misWorker.postMessage([s.atoms, s.bonds, Globals.repeatAtomIndex]);
     } else {
