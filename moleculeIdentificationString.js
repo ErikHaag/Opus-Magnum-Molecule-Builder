@@ -511,7 +511,7 @@ function timedStep() {
     while (MISGenerator.state > 0 && (performance.now() - startTime) < 1000 ) {
         MISGenerator.step();
     }
-    if (MISGenerator > 0) {
+    if (MISGenerator.state > 0) {
         timer = setTimeout(timedStep, 10);
     }
     if (MISGenerator.state == -2) {
